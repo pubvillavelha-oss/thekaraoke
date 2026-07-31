@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Karaokê - Fila ao Vivo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .display-header {
+            text-align: center;
+            padding: 20px 20px 10px;
+            flex-shrink: 0;
+        }
+        .display-header h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+        .display-header .sub {
+            color: #888;
+            font-size: 1rem;
+            margin-top: 4px;
+        }
+
+        /* ===== NOW PLAYING ===== */
+        .now-playing {
+            text-align: center;
+            padding: 16px 20px 20px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .now-playing .label {
+            font-size: 0.85rem;
+            color: #f7971e;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+        .now-playing .singer {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-top: 4px;
+            color: #fff;
+        }
+        .now-playing .music {
+            font-size: 1.3rem;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        .now-playing .artist {
+            font-size: 1rem;
+            color: #999;
+            font-style: italic;
+        }
+        .now-playing .empty-now {
+            font-size: 1.6rem;
+            color: #555;
+            font-style: italic;
+            padding: 10px 0;
+        }
+
+        /* ===== QUEUE ===== */
+        .queue-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px 20px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+        .queue-container::-webkit-scrollbar { width: 6px; }
+        .queue-container::-webkit-scrollbar-track { background: transparent; }
+        .queue-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 8px; }
+
+        .queue-title {
+            font-size: 1.1rem;
+            color: #aaa;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .queue-title .count {
+            background: rgba(247, 151, 30, 0.2);
+            color: #ffd200;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .empty-queue {
+            text-align: center;
+            color: #555;
+            font-size: 1.2rem;
+            font-style: italic;
+            padding: 40px 0;
+        }
+
+        /* ===== QUEUE ITEMS ===== */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: background 0.2s;
+        }
+        .queue-item:hover { background: rgba(255, 255, 255, 0.07); }
+
+        .item-pos {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #f7971e;
+            min-width: 48px;
+            text-align: center;
+        }
+
+        .item-info { flex: 1; min-width: 0; }
+        .item-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .item-music {
+            font-size: 1rem;
+            color: #bbb;
+            margin-top: 2px;
+        }
+        .item-artist {
+            font-size: 0.85rem;
+            color: #888;
+            font-style: italic;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .display-header h1 { font-size: 1.8rem; }
+            .now-playing .singer { font-size: 1.6rem; }
+            .now-playing .music { font-size: 1rem; }
+            .item-pos { font-size: 1.2rem; min-width: 36px; }
+            .item-name { font-size: 1rem; }
+            .item-music { font-size: 0.85rem; }
+        }
+
+        /* ===== FULLSCREEN TV MODE ===== */
+        @media (min-width: 1024px) {
+            .display-header h1 { font-size: 3.2rem; }
+            .now-playing .singer { font-size: 3rem; }
+            .now-playing .music { font-size: 1.6rem; }
+            .item-pos { font-size: 2rem; min-width: 60px; }
+            .item-name { font-size: 1.6rem; }
+            .item-music { font-size: 1.2rem; }
+            .item-artist { font-size: 1rem; }
+        }
+
+        /* ===== ANIMATION ===== */
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .queue-item { animation: fadeSlide 0.3s ease-out; }
+        .now-playing { animation: fadeSlide 0.4s ease-out; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="display-header">
+        <h1>🎤 Fila do Karaokê</h1>
+        <div class="sub">Próximas apresentações</div>
+    </div>
+
+    <!-- NOW PLAYING -->
+    <div class="now-playing" id="nowPlaying">
+        <div class="label">🔴 Cantando agora</div>
+        <div id="nowContent">
+            <div class="empty-now">Aguardando próximo cantor...</div>
+        </div>
+    </div>
+
+    <!-- QUEUE -->
+    <div class="queue-container" id="queueContainer">
+        <div class="queue-title">
+            <span>📋 Próximos da fila</span>
+            <span class="count" id="queueCount">0</span>
+        </div>
+        <div id="queueList">
+            <div class="empty-queue">Ninguém na fila no momento</div>
+        </div>
+    </div>
+
+<script>
+    // ===== CONFIG =====
+    const STORAGE_KEY = 'karaoke_fila_v3';
+    const REFRESH_MS  = 2000; // atualiza a cada 2 segundos
+
+    // ===== DOM =====
+    const nowContent  = document.getElementById('nowContent');
+    const queueList   = document.getElementById('queueList');
+    const queueCount  = document.getElementById('queueCount');
+
+    // ===== ESCAPE =====
+    function esc(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ===== CARREGA FILA DO localStorage =====
+    function loadQueue() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch { return []; }
+    }
+
+    // ===== RENDER =====
+    function render() {
+        const all = loadQueue();
+        const pending = all.filter(s => !s.done);
+        const done    = all.filter(s => s.done);
+
+        // --- NOW PLAYING ---
+        // Se alguém já cantou, o último que cantou é o "agora"
+        // Senão, mostra o primeiro da fila como "próximo"
+        const lastDone = done.length > 0 ? done[done.length - 1] : null;
+        const nextUp   = pending.length > 0 ? pending[0] : null;
+
+        if (lastDone) {
+            nowContent.innerHTML = `
+                <div class="singer">${esc(lastDone.nome)}</div>
+                <div class="music">🎵 ${esc(lastDone.musica)}</div>
+                <div class="artist">🎤 ${esc(lastDone.artista || 'Artista')}</div>
+            `;
+        } else if (nextUp) {
+            nowContent.innerHTML = `
+                <div class="singer">${esc(nextUp.nome)}</div>
+                <div class="music">🎵 ${esc(nextUp.musica)}</div>
+                <div class="artist">🎤 ${esc(nextUp.artista || 'Artista')}</div>
+                <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
+            `;
+        } else {
+            nowContent.innerHTML = `<div class="empty-now">Aguardando próximo cantor...</div>`;
+        }
+
+        // --- QUEUE ---
+        // Mostra apenas os pendentes (quem ainda não cantou)
+        // Pula o primeiro se ele já estiver como "cantando agora"
+        const showPending = lastDone ? pending : (pending.length > 1 ? pending.slice(1) : []);
+
+        if (showPending.length === 0) {
+            queueList.innerHTML = `<div class="empty-queue">Fila vazia — seja o próximo! 🎤</div>`;
+            queueCount.textContent = '0';
+            return;
+        }
+
+        queueList.innerHTML = showPending.map((s, idx) => {
+            const pos = lastDone ? idx + 1 : idx + 2;
+            return `
+                <div class="queue-item">
+                    <div class="item-pos">#${pos}</div>
+                    <div class="item-info">
+                        <div class="item-name">${esc(s.nome)}</div>
+                        <div class="item-music">🎵 ${esc(s.musica)}</div>
+                        <div class="item-artist">🎤 ${esc(s.artista || 'Artista')}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        queueCount.textContent = showPending.length;
+    }
+
+    // ===== AUTO REFRESH =====
+    render();
+    setInterval(render, REFRESH_MS);
+</script>
+
+</body>
+</html>
