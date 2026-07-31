@@ -20,10 +20,7 @@
         }
         .container { max-width: 780px; margin: 0 auto; }
 
-        header {
-            text-align: center;
-            padding: 30px 0 20px;
-        }
+        header { text-align: center; padding: 30px 0 20px; }
         header h1 {
             font-size: 2.2rem;
             background: linear-gradient(90deg, #f7971e, #ffd200);
@@ -33,22 +30,58 @@
         }
         header p { color: #aaa; margin-top: 6px; font-size: 0.95rem; }
 
-        .header-actions { margin-top: 14px; }
-        .btn-presentation {
+        .header-actions {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn-header {
             display: inline-block;
-            padding: 10px 24px;
-            background: linear-gradient(90deg, #6ba3ff, #8f6bff);
-            color: #fff;
+            padding: 10px 18px;
             border: none;
             border-radius: 10px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 600;
             text-decoration: none;
             cursor: pointer;
             transition: transform 0.15s, opacity 0.2s;
         }
-        .btn-presentation:hover { transform: scale(1.02); }
-        .btn-presentation:active { transform: scale(0.97); }
+        .btn-header:hover { transform: scale(1.02); }
+        .btn-header:active { transform: scale(0.97); }
+        .btn-header.blue { background: linear-gradient(90deg, #6ba3ff, #8f6bff); color: #fff; }
+        .btn-header.orange { background: linear-gradient(90deg, #f7971e, #ffd200); color: #1a1a2e; }
+        .btn-header.gray { background: rgba(255,255,255,0.12); color: #ddd; border: 1px solid rgba(255,255,255,0.15); }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+
+        .avail-pill {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .avail-pill.open { background: rgba(70, 200, 70, 0.12); color: #6bff6b; }
+        .avail-pill.closed { background: rgba(255, 70, 70, 0.12); color: #ff6b6b; }
 
         .card {
             background: rgba(255, 255, 255, 0.06);
@@ -177,13 +210,8 @@
             transition: background 0.2s;
         }
         .singer-item:hover { background: rgba(255, 255, 255, 0.07); }
-        .singer-item.done {
-            opacity: 0.5;
-            order: 999;
-        }
-        .singer-item.done .singer-name {
-            text-decoration: line-through;
-        }
+        .singer-item.done { opacity: 0.5; order: 999; }
+        .singer-item.done .singer-name { text-decoration: line-through; }
 
         .singer-pos {
             font-size: 1.3rem;
@@ -204,6 +232,7 @@
             gap: 6px;
             flex-shrink: 0;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         footer {
@@ -213,23 +242,6 @@
             font-size: 0.8rem;
         }
         footer a { color: #777; text-decoration: none; }
-
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
-            margin-top: 8px;
-            font-size: 0.8rem;
-        }
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .status-dot.online { background: #4ade80; }
-        .status-dot.offline { background: #f87171; }
 
         @media (max-width: 600px) {
             .form-grid { grid-template-columns: 1fr; }
@@ -254,6 +266,8 @@
             transition: opacity 0.4s, bottom 0.4s;
             pointer-events: none;
             z-index: 999;
+            white-space: nowrap;
+            max-width: 90%;
         }
         .toast.show { opacity: 1; bottom: 50px; }
     </style>
@@ -266,12 +280,16 @@
         <h1>🎤 Fila do Karaokê</h1>
         <p>Adicione seu nome e música para entrar na fila</p>
         <div class="header-actions">
-            <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-presentation">📺 Abrir tela de apresentação</a>
-            <a href="inclusao.html" target="_blank" rel="noopener" class="btn-presentation" style="background:linear-gradient(90deg,#f7971e,#ffd200);color:#1a1a2e;margin-left:8px;">➕ Abrir tela de inclusão</a>
+            <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-header blue">📺 Apresentação</a>
+            <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>
+            <a href="config.html" target="_blank" rel="noopener" class="btn-header gray">⚙️ Configuração</a>
         </div>
         <div class="status-bar">
             <span class="status-dot" id="statusDot"></span>
             <span id="statusText">Conectando...</span>
+        </div>
+        <div>
+            <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
         </div>
     </header>
 
@@ -342,7 +360,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const COLLECTION = 'karaoke_fila';
-    const DAILY_LIMIT = 60;
+    const CONFIG_PATH = 'config/disponibilidade';
 
     // ===== DOM =====
     const form          = document.getElementById('formAdd');
@@ -356,6 +374,7 @@
     const dailyLimitEl  = document.getElementById('dailyLimit');
     const statusDot     = document.getElementById('statusDot');
     const statusText    = document.getElementById('statusText');
+    const availPill     = document.getElementById('availPill');
 
     let toastTimer = null;
     function showToast(msg) {
@@ -371,15 +390,92 @@
         statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
     }
 
-    // ===== ESCAPE =====
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    // ===== DATAS E HORAS (horário local) =====
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dia}`;
+    }
+    function formatTime(d) {
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     }
 
-    // ===== LIMITE DIÁRIO =====
+    // ===== LIMITE DIÁRIO DINÂMICO (lê da configuração) =====
+    async function getLimiteDiario() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (doc.exists && doc.data().limiteDiario) return Number(doc.data().limiteDiario);
+        } catch {}
+        return 60;
+    }
+
+    // ===== VERIFICA DISPONIBILIDADE (datas + horários) =====
+    async function verificarDisponibilidade() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (!doc.exists) return { aberto: true, msg: '' };
+            const cfg = doc.data();
+            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
+            return dentro
+                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+        } catch {
+            return { aberto: true, msg: '' };
+        }
+    }
+
+    // ===== ATUALIZA O AVISO DE DISPONIBILIDADE NA TELA =====
+    async function atualizarDisponibilidadeUI() {
+        const res = await verificarDisponibilidade();
+        if (res.aberto) {
+            availPill.className = 'avail-pill open';
+            availPill.textContent = '🟢 ' + (res.msg || 'Fila aberta');
+        } else {
+            availPill.className = 'avail-pill closed';
+            availPill.textContent = '🔴 ' + (res.msg || 'Fila fechada');
+        }
+    }
+
+    // ===== CONTADOR DIÁRIO =====
     function getTodayStr() {
         return new Date().toISOString().slice(0, 10);
     }
@@ -390,9 +486,7 @@
                 .where('dataCadastro', '==', getTodayStr())
                 .get();
             return snapshot.size;
-        } catch {
-            return 0;
-        }
+        } catch { return 0; }
     }
 
     // ===== VERIFICA SE PESSOA PODE CADASTRAR =====
@@ -404,9 +498,15 @@
                 .where('done', '==', false)
                 .get();
             return snapshot.empty;
-        } catch {
-            return true;
-        }
+        } catch { return true; }
+    }
+
+    // ===== ESCAPE =====
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     // ===== RENDER =====
@@ -417,7 +517,9 @@
         if (singers.length === 0) {
             queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. Seja o primeiro! 🎤</div>`;
             queueCount.textContent = '0 na fila';
-            dailyLimitEl.textContent = `📅 0 / ${DAILY_LIMIT} hoje`;
+            getLimiteDiario().then(limite => {
+                dailyLimitEl.textContent = `📅 0 / ${limite} hoje`;
+            });
             return;
         }
 
@@ -439,8 +541,8 @@
                     </div>
                     <div class="singer-actions">
                         ${s.link ? `<a href="${escapeHtml(s.link)}" target="_blank" rel="noopener" class="btn btn-link">🔗 Ouvir</a>` : ''}
-                        ${!isDone ? `<button class="btn btn-success btn-sm" onclick="markDone('${s.id}')">✔ Já cantou</button>` : ''}
-                        <button class="btn btn-danger btn-sm" onclick="removeSinger('${s.id}')">✕ Remover</button>
+                        ${!isDone ? `<button class="btn btn-success" onclick="markDone('${s.id}')">✔ Já cantou</button>` : ''}
+                        <button class="btn btn-danger" onclick="removeSinger('${s.id}')">✕ Remover</button>
                     </div>
                 </div>
             `;
@@ -449,8 +551,10 @@
         const pendCount = pending.length;
         queueCount.textContent = `${pendCount} na fila`;
 
-        getDailyCount().then(count => {
-            dailyLimitEl.textContent = `📅 ${count} / ${DAILY_LIMIT} hoje`;
+        getLimiteDiario().then(limite => {
+            getDailyCount().then(count => {
+                dailyLimitEl.textContent = `📅 ${count} / ${limite} hoje`;
+            });
         });
     }
 
@@ -473,12 +577,23 @@
 
     // ===== ADICIONAR =====
     async function addSinger(nome, telefone, musica, artista, link) {
-        const dailyCount = await getDailyCount();
-        if (dailyCount >= DAILY_LIMIT) {
-            showToast('⚠️ Limite de 60 músicas por dia atingido! Volte amanhã.');
+        // Bloqueia se estiver fora do horário
+        const res = await verificarDisponibilidade();
+        if (!res.aberto) {
+            showToast('⏰ ' + res.msg);
+            atualizarDisponibilidadeUI();
             return false;
         }
 
+        // Limite diário dinâmico
+        const limite = await getLimiteDiario();
+        const dailyCount = await getDailyCount();
+        if (dailyCount >= limite) {
+            showToast(`⚠️ Limite de ${limite} músicas por dia atingido! Volte amanhã.`);
+            return false;
+        }
+
+        // Pessoa já está na fila?
         const pode = await pessoaPodeCadastrar(nome);
         if (!pode) {
             showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde cantar para cadastrar novamente.`);
@@ -509,9 +624,7 @@
     // ===== MARCAR COMO JÁ CANTOU =====
     async function markDone(id) {
         try {
-            await db.collection(COLLECTION).doc(id).update({
-                done: true
-            });
+            await db.collection(COLLECTION).doc(id).update({ done: true });
             showToast('✅ Cantor(a) marcado(a) como já cantou!');
         } catch (error) {
             console.error('Erro ao marcar:', error);
@@ -564,6 +677,8 @@
 
     // ===== INICIA =====
     listenQueue();
+    atualizarDisponibilidadeUI();
+    setInterval(atualizarDisponibilidadeUI, 30000);
 </script>
 
 </body>
