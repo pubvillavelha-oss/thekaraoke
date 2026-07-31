@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Fila de Cantores</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -28,10 +33,7 @@
         }
         header p { color: #aaa; margin-top: 6px; font-size: 0.95rem; }
 
-        /* Botão de apresentação no header */
-        .header-actions {
-            margin-top: 14px;
-        }
+        .header-actions { margin-top: 14px; }
         .btn-presentation {
             display: inline-block;
             padding: 10px 24px;
@@ -205,6 +207,23 @@
         }
         footer a { color: #777; text-decoration: none; }
 
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+
         @media (max-width: 600px) {
             .form-grid { grid-template-columns: 1fr; }
             .form-grid .full-width { grid-column: 1; }
@@ -241,6 +260,10 @@
         <p>Adicione seu nome e música para entrar na fila</p>
         <div class="header-actions">
             <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-presentation">📺 Abrir tela de apresentação</a>
+        </div>
+        <div class="status-bar">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Conectando...</span>
         </div>
     </header>
 
@@ -283,23 +306,37 @@
             </div>
         </div>
         <div id="queueList">
-            <div class="empty-msg">Ninguém na fila ainda. Seja o primeiro! 🎤</div>
+            <div class="empty-msg">Carregando fila...</div>
         </div>
     </div>
 
     <footer>
-        Feito com ❤️ para o karaokê &mdash; Limite diário: 60 músicas
+        Feito com ❤️ para o karaokê &mdash; Dados sincronizados em tempo real
     </footer>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-    const STORAGE_KEY = 'karaoke_fila_v3';
-    const DAILY_KEY   = 'karaoke_daily_count';
-    const DAILY_LIMIT = 60;
-    let queue = [];
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
 
+    // ===== INICIALIZA FIREBASE =====
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const COLLECTION = 'karaoke_fila';
+    const DAILY_LIMIT = 60;
+
+    // ===== DOM =====
     const form          = document.getElementById('formAdd');
     const inputNome     = document.getElementById('nome');
     const inputTelefone = document.getElementById('telefone');
@@ -309,6 +346,8 @@
     const queueList     = document.getElementById('queueList');
     const queueCount    = document.getElementById('queueCount');
     const dailyLimitEl  = document.getElementById('dailyLimit');
+    const statusDot     = document.getElementById('statusDot');
+    const statusText    = document.getElementById('statusText');
 
     let toastTimer = null;
     function showToast(msg) {
@@ -319,61 +358,59 @@
         toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
     }
 
+    function setStatus(online) {
+        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+        statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
+    }
+
+    // ===== ESCAPE =====
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     // ===== LIMITE DIÁRIO =====
     function getTodayStr() {
         return new Date().toISOString().slice(0, 10);
     }
 
-    function getDailyCount() {
+    // ===== CONTA CADASTROS DO DIA NO FIREBASE =====
+    async function getDailyCount() {
         try {
-            const data = JSON.parse(localStorage.getItem(DAILY_KEY));
-            if (data && data.date === getTodayStr()) return data.count;
-        } catch {}
-        return 0;
-    }
-
-    function incrementDailyCount() {
-        const today = getTodayStr();
-        const current = getDailyCount();
-        localStorage.setItem(DAILY_KEY, JSON.stringify({ date: today, count: current + 1 }));
-        updateDailyDisplay();
-    }
-
-    function updateDailyDisplay() {
-        const used = getDailyCount();
-        dailyLimitEl.textContent = `📅 ${used} / ${DAILY_LIMIT} hoje`;
-        return DAILY_LIMIT - used;
-    }
-
-    // ===== STORAGE =====
-    function loadQueue() {
-        try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            queue = data ? JSON.parse(data) : [];
-        } catch { queue = []; }
-    }
-
-    function saveQueue() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+            const snapshot = await db.collection(COLLECTION)
+                .where('dataCadastro', '==', getTodayStr())
+                .get();
+            return snapshot.size;
+        } catch {
+            return 0;
+        }
     }
 
     // ===== VERIFICA SE PESSOA PODE CADASTRAR =====
-    function pessoaPodeCadastrar(nome) {
+    async function pessoaPodeCadastrar(nome) {
         const nomeLower = nome.trim().toLowerCase();
-        return !queue.some(s =>
-            s.nome.trim().toLowerCase() === nomeLower && !s.done
-        );
+        try {
+            const snapshot = await db.collection(COLLECTION)
+                .where('nomeLower', '==', nomeLower)
+                .where('done', '==', false)
+                .get();
+            return snapshot.empty;
+        } catch {
+            return true;
+        }
     }
 
     // ===== RENDER =====
-    function render() {
-        const pending = queue.filter(s => !s.done);
-        const done    = queue.filter(s => s.done);
+    function render(singers) {
+        const pending = singers.filter(s => !s.done);
+        const done    = singers.filter(s => s.done);
 
-        if (queue.length === 0) {
+        if (singers.length === 0) {
             queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. Seja o primeiro! 🎤</div>`;
             queueCount.textContent = '0 na fila';
-            updateDailyDisplay();
+            dailyLimitEl.textContent = `📅 0 / ${DAILY_LIMIT} hoje`;
             return;
         }
 
@@ -403,63 +440,82 @@
 
         const pendCount = pending.length;
         queueCount.textContent = `${pendCount} na fila`;
-        updateDailyDisplay();
+
+        // Atualiza contador diário
+        getDailyCount().then(count => {
+            dailyLimitEl.textContent = `📅 ${count} / ${DAILY_LIMIT} hoje`;
+        });
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
+    function listenQueue() {
+        db.collection(COLLECTION)
+            .orderBy('createdAt', 'asc')
+            .onSnapshot((snapshot) => {
+                const singers = [];
+                snapshot.forEach((doc) => {
+                    singers.push({ id: doc.id, ...doc.data() });
+                });
+                render(singers);
+                setStatus(true);
+            }, (error) => {
+                console.error('Erro no Firestore:', error);
+                setStatus(false);
+            });
     }
 
-    // ===== ACTIONS =====
-    function generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    }
-
-    function addSinger(nome, telefone, musica, artista, link) {
-        const remaining = DAILY_LIMIT - getDailyCount();
-        if (remaining <= 0) {
+    // ===== ADICIONAR =====
+    async function addSinger(nome, telefone, musica, artista, link) {
+        // Verifica limite diário
+        const dailyCount = await getDailyCount();
+        if (dailyCount >= DAILY_LIMIT) {
             showToast('⚠️ Limite de 60 músicas por dia atingido! Volte amanhã.');
             return false;
         }
 
-        if (!pessoaPodeCadastrar(nome)) {
+        // Verifica se a pessoa já está na fila
+        const pode = await pessoaPodeCadastrar(nome);
+        if (!pode) {
             showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde cantar para cadastrar novamente.`);
             return false;
         }
 
-        const singer = {
-            id: generateId(),
-            nome: nome.trim(),
-            telefone: telefone.trim(),
-            musica: musica.trim(),
-            artista: artista.trim(),
-            link: link.trim(),
-            done: false,
-            createdAt: Date.now()
-        };
-        queue.push(singer);
-        saveQueue();
-        incrementDailyCount();
-        render();
-        showToast(`🎤 ${singer.nome} entrou na fila!`);
-        return true;
+        try {
+            await db.collection(COLLECTION).add({
+                nome: nome.trim(),
+                nomeLower: nome.trim().toLowerCase(),
+                telefone: telefone.trim(),
+                musica: musica.trim(),
+                artista: artista.trim(),
+                link: link.trim(),
+                done: false,
+                dataCadastro: getTodayStr(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast(`🎤 ${nome.trim()} entrou na fila!`);
+            return true;
+        } catch (error) {
+            console.error('Erro ao adicionar:', error);
+            showToast('⚠️ Erro ao adicionar. Tente novamente.');
+            return false;
+        }
     }
 
-    function markDone(id) {
-        const singer = queue.find(s => s.id === id);
-        if (singer) {
-            singer.done = true;
-            saveQueue();
-            render();
-            showToast(`✅ ${singer.nome} já cantou!`);
+    // ===== MARCAR COMO JÁ CANTOU =====
+    async function markDone(id) {
+        try {
+            await db.collection(COLLECTION).doc(id).update({
+                done: true
+            });
+            showToast('✅ Cantor(a) marcado(a) como já cantou!');
+        } catch (error) {
+            console.error('Erro ao marcar:', error);
+            showToast('⚠️ Erro ao atualizar. Tente novamente.');
         }
     }
 
     // ===== FORM SUBMIT =====
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const nome     = inputNome.value.trim();
@@ -473,16 +529,24 @@
             return;
         }
 
-        const added = addSinger(nome, telefone, musica, artista, link);
+        // Desabilita o botão enquanto salva
+        const btn = form.querySelector('.btn-primary');
+        btn.disabled = true;
+        btn.textContent = '⏳ Salvando...';
+
+        const added = await addSinger(nome, telefone, musica, artista, link);
+
+        btn.disabled = false;
+        btn.textContent = '➕ Adicionar à fila';
+
         if (added) {
             form.reset();
             inputNome.focus();
         }
     });
 
-    // ===== INIT =====
-    loadQueue();
-    render();
+    // ===== INICIA =====
+    listenQueue();
 </script>
 
 </body>
