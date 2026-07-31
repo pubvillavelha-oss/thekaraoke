@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Fila ao Vivo</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -37,6 +42,24 @@
             font-size: 1rem;
             margin-top: 4px;
         }
+
+        /* ===== STATUS ===== */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 6px;
+            font-size: 0.8rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
 
         /* ===== NOW PLAYING ===== */
         .now-playing {
@@ -185,6 +208,10 @@
     <div class="display-header">
         <h1>🎤 Fila do Karaokê</h1>
         <div class="sub">Próximas apresentações</div>
+        <div class="status-bar">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Conectando...</span>
+        </div>
     </div>
 
     <!-- NOW PLAYING -->
@@ -202,19 +229,40 @@
             <span class="count" id="queueCount">0</span>
         </div>
         <div id="queueList">
-            <div class="empty-queue">Ninguém na fila no momento</div>
+            <div class="empty-queue">Carregando...</div>
         </div>
     </div>
 
 <script>
-    // ===== CONFIG =====
-    const STORAGE_KEY = 'karaoke_fila_v3';
-    const REFRESH_MS  = 2000; // atualiza a cada 2 segundos
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE (mesmo do index.html)
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
+
+    // ===== INICIALIZA FIREBASE =====
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const COLLECTION = 'karaoke_fila';
 
     // ===== DOM =====
-    const nowContent  = document.getElementById('nowContent');
-    const queueList   = document.getElementById('queueList');
-    const queueCount  = document.getElementById('queueCount');
+    const nowContent = document.getElementById('nowContent');
+    const queueList  = document.getElementById('queueList');
+    const queueCount = document.getElementById('queueCount');
+    const statusDot  = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    // ===== STATUS =====
+    function setStatus(online) {
+        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+        statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
+    }
 
     // ===== ESCAPE =====
     function esc(str) {
@@ -224,23 +272,12 @@
         return div.innerHTML;
     }
 
-    // ===== CARREGA FILA DO localStorage =====
-    function loadQueue() {
-        try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
-        } catch { return []; }
-    }
-
     // ===== RENDER =====
-    function render() {
-        const all = loadQueue();
-        const pending = all.filter(s => !s.done);
-        const done    = all.filter(s => s.done);
+    function render(singers) {
+        const pending = singers.filter(s => !s.done);
+        const done    = singers.filter(s => s.done);
 
         // --- NOW PLAYING ---
-        // Se alguém já cantou, o último que cantou é o "agora"
-        // Senão, mostra o primeiro da fila como "próximo"
         const lastDone = done.length > 0 ? done[done.length - 1] : null;
         const nextUp   = pending.length > 0 ? pending[0] : null;
 
@@ -262,8 +299,6 @@
         }
 
         // --- QUEUE ---
-        // Mostra apenas os pendentes (quem ainda não cantou)
-        // Pula o primeiro se ele já estiver como "cantando agora"
         const showPending = lastDone ? pending : (pending.length > 1 ? pending.slice(1) : []);
 
         if (showPending.length === 0) {
@@ -289,9 +324,25 @@
         queueCount.textContent = showPending.length;
     }
 
-    // ===== AUTO REFRESH =====
-    render();
-    setInterval(render, REFRESH_MS);
+    // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
+    function listenQueue() {
+        db.collection(COLLECTION)
+            .orderBy('createdAt', 'asc')
+            .onSnapshot((snapshot) => {
+                const singers = [];
+                snapshot.forEach((doc) => {
+                    singers.push({ id: doc.id, ...doc.data() });
+                });
+                render(singers);
+                setStatus(true);
+            }, (error) => {
+                console.error('Erro no Firestore:', error);
+                setStatus(false);
+            });
+    }
+
+    // ===== INICIA =====
+    listenQueue();
 </script>
 
 </body>
