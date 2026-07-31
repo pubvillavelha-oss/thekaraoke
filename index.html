@@ -28,6 +28,26 @@
         }
         header p { color: #aaa; margin-top: 6px; font-size: 0.95rem; }
 
+        /* Botão de apresentação no header */
+        .header-actions {
+            margin-top: 14px;
+        }
+        .btn-presentation {
+            display: inline-block;
+            padding: 10px 24px;
+            background: linear-gradient(90deg, #6ba3ff, #8f6bff);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+        }
+        .btn-presentation:hover { transform: scale(1.02); }
+        .btn-presentation:active { transform: scale(0.97); }
+
         .card {
             background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(12px);
@@ -219,6 +239,9 @@
     <header>
         <h1>🎤 Fila do Karaokê</h1>
         <p>Adicione seu nome e música para entrar na fila</p>
+        <div class="header-actions">
+            <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-presentation">📺 Abrir tela de apresentação</a>
+        </div>
     </header>
 
     <!-- FORM -->
