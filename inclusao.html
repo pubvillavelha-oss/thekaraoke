@@ -21,15 +21,9 @@
             justify-content: center;
             padding: 20px;
         }
-        .container {
-            max-width: 520px;
-            width: 100%;
-        }
+        .container { max-width: 520px; width: 100%; }
 
-        header {
-            text-align: center;
-            padding: 20px 0;
-        }
+        header { text-align: center; padding: 20px 0; }
         header h1 {
             font-size: 2rem;
             background: linear-gradient(90deg, #f7971e, #ffd200);
@@ -37,11 +31,7 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        header p {
-            color: #aaa;
-            margin-top: 6px;
-            font-size: 0.9rem;
-        }
+        header p { color: #aaa; margin-top: 6px; font-size: 0.9rem; }
 
         .card {
             background: rgba(255, 255, 255, 0.06);
@@ -51,9 +41,7 @@
             padding: 28px 24px;
         }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
+        .form-group { margin-bottom: 16px; }
         label {
             display: block;
             font-size: 0.85rem;
@@ -93,11 +81,7 @@
         }
         .btn:hover { transform: scale(1.02); }
         .btn:active { transform: scale(0.97); }
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
         .success-msg {
             display: none;
@@ -108,20 +92,31 @@
             border-radius: 12px;
             margin-top: 16px;
         }
-        .success-msg .icon {
-            font-size: 2rem;
-        }
+        .success-msg .icon { font-size: 2rem; }
         .success-msg .text {
             font-size: 1.1rem;
             color: #6bff6b;
             margin-top: 8px;
             font-weight: 600;
         }
-        .success-msg .sub {
-            font-size: 0.85rem;
-            color: #999;
-            margin-top: 4px;
+        .success-msg .sub { font-size: 0.85rem; color: #999; margin-top: 4px; }
+
+        .closed-msg {
+            display: none;
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 70, 70, 0.08);
+            border: 1px solid rgba(255, 70, 70, 0.2);
+            border-radius: 12px;
         }
+        .closed-msg .icon { font-size: 2.4rem; }
+        .closed-msg .title {
+            font-size: 1.2rem;
+            color: #ff6b6b;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .closed-msg .sub { font-size: 0.9rem; color: #999; margin-top: 6px; }
 
         .status-bar {
             display: flex;
@@ -129,8 +124,12 @@
             gap: 8px;
             justify-content: center;
             margin-top: 16px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            padding: 8px 14px;
+            border-radius: 20px;
         }
+        .status-bar.open { background: rgba(70, 200, 70, 0.12); color: #6bff6b; }
+        .status-bar.closed { background: rgba(255, 70, 70, 0.12); color: #ff6b6b; }
         .status-dot {
             width: 8px;
             height: 8px;
@@ -140,12 +139,7 @@
         .status-dot.online { background: #4ade80; }
         .status-dot.offline { background: #f87171; }
 
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            color: #555;
-            font-size: 0.8rem;
-        }
+        .footer { text-align: center; margin-top: 20px; color: #555; font-size: 0.8rem; }
 
         .toast {
             position: fixed;
@@ -162,6 +156,8 @@
             transition: opacity 0.4s, bottom 0.4s;
             pointer-events: none;
             z-index: 999;
+            white-space: nowrap;
+            max-width: 90%;
         }
         .toast.show { opacity: 1; bottom: 50px; }
     </style>
@@ -175,7 +171,21 @@
         <p>Preencha para entrar na fila</p>
     </header>
 
-    <div class="card">
+    <!-- STATUS DE DISPONIBILIDADE -->
+    <div class="status-bar closed" id="statusBar">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Verificando disponibilidade...</span>
+    </div>
+
+    <!-- FORA DO HORÁRIO -->
+    <div class="closed-msg" id="closedMsg">
+        <div class="icon">⏰</div>
+        <div class="title">Cadastros encerrados no momento</div>
+        <div class="sub" id="closedSub">A fila do karaokê abre apenas durante o evento. Volte em breve!</div>
+    </div>
+
+    <!-- FORM -->
+    <div class="card" id="formCard">
         <form id="formAdd">
             <div class="form-group">
                 <label for="nome">Seu Nome *</label>
@@ -203,14 +213,7 @@
         </div>
     </div>
 
-    <div class="status-bar">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">Conectando...</span>
-    </div>
-
-    <div class="footer">
-        Dados sincronizados em tempo real
-    </div>
+    <div class="footer">Dados sincronizados em tempo real</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -232,18 +235,24 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const COLLECTION = 'karaoke_fila';
-    const DAILY_LIMIT = 60;
+    const CONFIG_PATH = 'config/disponibilidade';
 
     // ===== DOM =====
     const form        = document.getElementById('formAdd');
+    const formCard    = document.getElementById('formCard');
     const inputNome   = document.getElementById('nome');
     const inputMusica = document.getElementById('musica');
     const inputArtista = document.getElementById('artista');
     const inputLink   = document.getElementById('link');
     const btnSubmit   = document.getElementById('btnSubmit');
     const successMsg  = document.getElementById('successMsg');
+    const closedMsg   = document.getElementById('closedMsg');
+    const closedSub   = document.getElementById('closedSub');
+    const statusBar   = document.getElementById('statusBar');
     const statusDot   = document.getElementById('statusDot');
     const statusText  = document.getElementById('statusText');
+
+    let disponivel = true;
 
     let toastTimer = null;
     function showToast(msg) {
@@ -254,12 +263,101 @@
         toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
     }
 
-    function setStatus(online) {
-        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
-        statusText.textContent = online ? 'Online' : 'Offline';
+    // ===== DATAS E HORAS (horário local) =====
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dia}`;
+    }
+    function formatTime(d) {
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     }
 
-    // ===== LIMITE DIÁRIO =====
+    // ===== LIMITE DIÁRIO DINÂMICO =====
+    async function getLimiteDiario() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (doc.exists && doc.data().limiteDiario) return Number(doc.data().limiteDiario);
+        } catch {}
+        return 60;
+    }
+
+    // ===== VERIFICA DISPONIBILIDADE =====
+    async function verificarDisponibilidade() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (!doc.exists) return { aberto: true, msg: '' };
+            const cfg = doc.data();
+            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
+            return dentro
+                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+        } catch {
+            return { aberto: true, msg: '' };
+        }
+    }
+
+    // ===== ATUALIZA A TELA SEGUNDO A DISPONIBILIDADE =====
+    async function atualizarStatus() {
+        const res = await verificarDisponibilidade();
+        disponivel = res.aberto;
+
+        if (res.aberto) {
+            formCard.style.display = 'block';
+            closedMsg.style.display = 'none';
+            statusBar.className = 'status-bar open';
+            statusText.textContent = res.msg || '🟢 Fila aberta';
+            statusDot.className = 'status-dot online';
+        } else {
+            formCard.style.display = 'none';
+            closedMsg.style.display = 'block';
+            closedSub.textContent = res.msg;
+            statusBar.className = 'status-bar closed';
+            statusText.textContent = '🔴 Fila fechada';
+            statusDot.className = 'status-dot offline';
+        }
+    }
+
+    // ===== CONTADOR DIÁRIO =====
     function getTodayStr() {
         return new Date().toISOString().slice(0, 10);
     }
@@ -270,9 +368,7 @@
                 .where('dataCadastro', '==', getTodayStr())
                 .get();
             return snapshot.size;
-        } catch {
-            return 0;
-        }
+        } catch { return 0; }
     }
 
     // ===== VERIFICA SE PESSOA JÁ ESTÁ NA FILA =====
@@ -284,19 +380,28 @@
                 .where('done', '==', false)
                 .get();
             return !snapshot.empty;
-        } catch {
-            return false;
-        }
+        } catch { return false; }
     }
 
     // ===== ADICIONAR =====
     async function addSinger(nome, musica, artista, link) {
-        const dailyCount = await getDailyCount();
-        if (dailyCount >= DAILY_LIMIT) {
-            showToast('⚠️ Limite de 60 músicas por dia atingido! Volte amanhã.');
+        // Bloqueia se estiver fora do horário
+        const res = await verificarDisponibilidade();
+        if (!res.aberto) {
+            showToast('⏰ Fora do horário de funcionamento.');
+            atualizarStatus();
             return false;
         }
 
+        // Limite diário dinâmico
+        const limite = await getLimiteDiario();
+        const dailyCount = await getDailyCount();
+        if (dailyCount >= limite) {
+            showToast(`⚠️ Limite de ${limite} músicas por dia atingido! Volte amanhã.`);
+            return false;
+        }
+
+        // Pessoa já está na fila?
         const jaEsta = await pessoaJaNaFila(nome);
         if (jaEsta) {
             showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde sua vez.`);
@@ -327,6 +432,11 @@
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        if (!disponivel) {
+            showToast('⏰ Fora do horário de funcionamento.');
+            return;
+        }
+
         const nome    = inputNome.value.trim();
         const musica  = inputMusica.value.trim();
         const artista = inputArtista.value.trim();
@@ -351,13 +461,9 @@
         }
     });
 
-    // ===== CONEXÃO =====
-    db.collection(COLLECTION)
-        .limit(1)
-        .onSnapshot(() => setStatus(true), () => setStatus(false));
-
-    // Timeout de conexão
-    setTimeout(() => setStatus(false), 5000);
+    // ===== INICIA =====
+    atualizarStatus();
+    setInterval(atualizarStatus, 30000);
 </script>
 
 </body>
