@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Karaokê - Incluir na Fila</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 520px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        header p {
+            color: #aaa;
+            margin-top: 6px;
+            font-size: 0.9rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 28px 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #f7971e;
+            box-shadow: 0 0 0 3px rgba(247, 151, 30, 0.2);
+        }
+        input::placeholder { color: #777; }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            color: #1a1a2e;
+            margin-top: 8px;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-msg {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: rgba(70, 200, 70, 0.1);
+            border: 1px solid rgba(70, 200, 70, 0.2);
+            border-radius: 12px;
+            margin-top: 16px;
+        }
+        .success-msg .icon {
+            font-size: 2rem;
+        }
+        .success-msg .text {
+            font-size: 1.1rem;
+            color: #6bff6b;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+        .success-msg .sub {
+            font-size: 0.85rem;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 16px;
+            font-size: 0.8rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #555;
+            font-size: 0.8rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.4s, bottom 0.4s;
+            pointer-events: none;
+            z-index: 999;
+        }
+        .toast.show { opacity: 1; bottom: 50px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>🎤 Fila do Karaokê</h1>
+        <p>Preencha para entrar na fila</p>
+    </header>
+
+    <div class="card">
+        <form id="formAdd">
+            <div class="form-group">
+                <label for="nome">Seu Nome *</label>
+                <input type="text" id="nome" placeholder="Ex: Ana" required />
+            </div>
+            <div class="form-group">
+                <label for="musica">Nome da Música *</label>
+                <input type="text" id="musica" placeholder="Ex: Bohemian Rhapsody" required />
+            </div>
+            <div class="form-group">
+                <label for="artista">Artista / Banda *</label>
+                <input type="text" id="artista" placeholder="Ex: Queen" required />
+            </div>
+            <div class="form-group">
+                <label for="link">Link da Música (YouTube / Spotify)</label>
+                <input type="url" id="link" placeholder="https://youtu.be/..." />
+            </div>
+            <button type="submit" class="btn" id="btnSubmit">➕ Entrar na fila</button>
+        </form>
+
+        <div class="success-msg" id="successMsg">
+            <div class="icon">✅</div>
+            <div class="text">Você está na fila!</div>
+            <div class="sub">Aguardando sua vez de cantar 🎤</div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Conectando...</span>
+    </div>
+
+    <div class="footer">
+        Dados sincronizados em tempo real
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
+
+    // ===== INICIALIZA FIREBASE =====
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const COLLECTION = 'karaoke_fila';
+    const DAILY_LIMIT = 60;
+
+    // ===== DOM =====
+    const form        = document.getElementById('formAdd');
+    const inputNome   = document.getElementById('nome');
+    const inputMusica = document.getElementById('musica');
+    const inputArtista = document.getElementById('artista');
+    const inputLink   = document.getElementById('link');
+    const btnSubmit   = document.getElementById('btnSubmit');
+    const successMsg  = document.getElementById('successMsg');
+    const statusDot   = document.getElementById('statusDot');
+    const statusText  = document.getElementById('statusText');
+
+    let toastTimer = null;
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function setStatus(online) {
+        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+        statusText.textContent = online ? 'Online' : 'Offline';
+    }
+
+    // ===== LIMITE DIÁRIO =====
+    function getTodayStr() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    async function getDailyCount() {
+        try {
+            const snapshot = await db.collection(COLLECTION)
+                .where('dataCadastro', '==', getTodayStr())
+                .get();
+            return snapshot.size;
+        } catch {
+            return 0;
+        }
+    }
+
+    // ===== VERIFICA SE PESSOA JÁ ESTÁ NA FILA =====
+    async function pessoaJaNaFila(nome) {
+        const nomeLower = nome.trim().toLowerCase();
+        try {
+            const snapshot = await db.collection(COLLECTION)
+                .where('nomeLower', '==', nomeLower)
+                .where('done', '==', false)
+                .get();
+            return !snapshot.empty;
+        } catch {
+            return false;
+        }
+    }
+
+    // ===== ADICIONAR =====
+    async function addSinger(nome, musica, artista, link) {
+        const dailyCount = await getDailyCount();
+        if (dailyCount >= DAILY_LIMIT) {
+            showToast('⚠️ Limite de 60 músicas por dia atingido! Volte amanhã.');
+            return false;
+        }
+
+        const jaEsta = await pessoaJaNaFila(nome);
+        if (jaEsta) {
+            showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde sua vez.`);
+            return false;
+        }
+
+        try {
+            await db.collection(COLLECTION).add({
+                nome: nome.trim(),
+                nomeLower: nome.trim().toLowerCase(),
+                telefone: '',
+                musica: musica.trim(),
+                artista: artista.trim(),
+                link: link.trim(),
+                done: false,
+                dataCadastro: getTodayStr(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (error) {
+            console.error('Erro ao adicionar:', error);
+            showToast('⚠️ Erro ao adicionar. Tente novamente.');
+            return false;
+        }
+    }
+
+    // ===== FORM SUBMIT =====
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nome    = inputNome.value.trim();
+        const musica  = inputMusica.value.trim();
+        const artista = inputArtista.value.trim();
+        const link    = inputLink.value.trim();
+
+        if (!nome || !musica || !artista) {
+            showToast('⚠️ Preencha nome, música e artista.');
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '⏳ Enviando...';
+
+        const added = await addSinger(nome, musica, artista, link);
+
+        if (added) {
+            form.style.display = 'none';
+            successMsg.style.display = 'block';
+        } else {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = '➕ Entrar na fila';
+        }
+    });
+
+    // ===== CONEXÃO =====
+    db.collection(COLLECTION)
+        .limit(1)
+        .onSnapshot(() => setStatus(true), () => setStatus(false));
+
+    // Timeout de conexão
+    setTimeout(() => setStatus(false), 5000);
+</script>
+
+</body>
+</html>
