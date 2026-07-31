@@ -92,79 +92,6 @@
             margin-bottom: 20px;
         }
 
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
-        .form-grid .full-width { grid-column: 1 / -1; }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #ccc;
-            margin-bottom: 4px;
-        }
-        input {
-            width: 100%;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(0, 0, 0, 0.35);
-            color: #fff;
-            font-size: 0.95rem;
-            transition: border 0.2s;
-        }
-        input:focus {
-            outline: none;
-            border-color: #f7971e;
-            box-shadow: 0 0 0 3px rgba(247, 151, 30, 0.2);
-        }
-        input::placeholder { color: #777; }
-
-        .btn {
-            padding: 11px 28px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s, opacity 0.2s;
-        }
-        .btn:hover { transform: scale(1.02); }
-        .btn:active { transform: scale(0.97); }
-
-        .btn-primary {
-            background: linear-gradient(90deg, #f7971e, #ffd200);
-            color: #1a1a2e;
-            width: 100%;
-            margin-top: 6px;
-        }
-        .btn-success {
-            background: rgba(70, 200, 70, 0.15);
-            color: #6bff6b;
-            border: 1px solid rgba(70, 200, 70, 0.25);
-            padding: 6px 14px;
-            font-size: 0.8rem;
-        }
-        .btn-danger {
-            background: rgba(255, 70, 70, 0.15);
-            color: #ff6b6b;
-            border: 1px solid rgba(255, 70, 70, 0.25);
-            padding: 6px 14px;
-            font-size: 0.8rem;
-        }
-        .btn-link {
-            background: rgba(70, 130, 255, 0.15);
-            color: #6ba3ff;
-            border: 1px solid rgba(70, 130, 255, 0.25);
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            text-decoration: none;
-            display: inline-block;
-        }
-
         .queue-header {
             display: flex;
             justify-content: space-between;
@@ -235,6 +162,23 @@
             flex-wrap: wrap;
         }
 
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn:active { transform: scale(0.97); }
+        .btn-success { background: rgba(70, 200, 70, 0.15); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.25); }
+        .btn-danger { background: rgba(255, 70, 70, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 70, 70, 0.25); }
+        .btn-link { background: rgba(70, 130, 255, 0.15); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.25); }
+
         footer {
             text-align: center;
             padding: 30px 0 10px;
@@ -244,8 +188,6 @@
         footer a { color: #777; text-decoration: none; }
 
         @media (max-width: 600px) {
-            .form-grid { grid-template-columns: 1fr; }
-            .form-grid .full-width { grid-column: 1; }
             header h1 { font-size: 1.6rem; }
             .singer-item { flex-wrap: wrap; }
             .singer-actions { width: 100%; justify-content: flex-end; }
@@ -278,7 +220,7 @@
 
     <header>
         <h1>🎤 Fila do Karaokê</h1>
-        <p>Adicione seu nome e música para entrar na fila</p>
+        <p>Gerenciamento da fila de cantores</p>
         <div class="header-actions">
             <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-header blue">📺 Apresentação</a>
             <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>
@@ -292,35 +234,6 @@
             <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
         </div>
     </header>
-
-    <!-- FORM -->
-    <div class="card">
-        <form id="formAdd">
-            <div class="form-grid">
-                <div>
-                    <label for="nome">Nome da Pessoa *</label>
-                    <input type="text" id="nome" placeholder="Ex: Ana" required />
-                </div>
-                <div>
-                    <label for="telefone">Telefone</label>
-                    <input type="tel" id="telefone" placeholder="(11) 99999-8888" />
-                </div>
-                <div class="full-width">
-                    <label for="musica">Nome da Música *</label>
-                    <input type="text" id="musica" placeholder="Ex: Bohemian Rhapsody" required />
-                </div>
-                <div class="full-width">
-                    <label for="artista">Artista / Banda *</label>
-                    <input type="text" id="artista" placeholder="Ex: Queen" required />
-                </div>
-                <div class="full-width">
-                    <label for="link">Link da Música (YouTube / Spotify)</label>
-                    <input type="url" id="link" placeholder="https://youtu.be/..." />
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary">➕ Adicionar à fila</button>
-        </form>
-    </div>
 
     <!-- QUEUE -->
     <div class="card">
@@ -363,12 +276,6 @@
     const CONFIG_PATH = 'config/disponibilidade';
 
     // ===== DOM =====
-    const form          = document.getElementById('formAdd');
-    const inputNome     = document.getElementById('nome');
-    const inputTelefone = document.getElementById('telefone');
-    const inputMusica   = document.getElementById('musica');
-    const inputArtista  = document.getElementById('artista');
-    const inputLink     = document.getElementById('link');
     const queueList     = document.getElementById('queueList');
     const queueCount    = document.getElementById('queueCount');
     const dailyLimitEl  = document.getElementById('dailyLimit');
@@ -489,18 +396,6 @@
         } catch { return 0; }
     }
 
-    // ===== VERIFICA SE PESSOA PODE CADASTRAR =====
-    async function pessoaPodeCadastrar(nome) {
-        const nomeLower = nome.trim().toLowerCase();
-        try {
-            const snapshot = await db.collection(COLLECTION)
-                .where('nomeLower', '==', nomeLower)
-                .where('done', '==', false)
-                .get();
-            return snapshot.empty;
-        } catch { return true; }
-    }
-
     // ===== ESCAPE =====
     function escapeHtml(str) {
         if (!str) return '';
@@ -515,7 +410,7 @@
         const done    = singers.filter(s => s.done);
 
         if (singers.length === 0) {
-            queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. Seja o primeiro! 🎤</div>`;
+            queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. A fila está vazia! 🎤</div>`;
             queueCount.textContent = '0 na fila';
             getLimiteDiario().then(limite => {
                 dailyLimitEl.textContent = `📅 0 / ${limite} hoje`;
@@ -575,52 +470,6 @@
             });
     }
 
-    // ===== ADICIONAR =====
-    async function addSinger(nome, telefone, musica, artista, link) {
-        // Bloqueia se estiver fora do horário
-        const res = await verificarDisponibilidade();
-        if (!res.aberto) {
-            showToast('⏰ ' + res.msg);
-            atualizarDisponibilidadeUI();
-            return false;
-        }
-
-        // Limite diário dinâmico
-        const limite = await getLimiteDiario();
-        const dailyCount = await getDailyCount();
-        if (dailyCount >= limite) {
-            showToast(`⚠️ Limite de ${limite} músicas por dia atingido! Volte amanhã.`);
-            return false;
-        }
-
-        // Pessoa já está na fila?
-        const pode = await pessoaPodeCadastrar(nome);
-        if (!pode) {
-            showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde cantar para cadastrar novamente.`);
-            return false;
-        }
-
-        try {
-            await db.collection(COLLECTION).add({
-                nome: nome.trim(),
-                nomeLower: nome.trim().toLowerCase(),
-                telefone: telefone.trim(),
-                musica: musica.trim(),
-                artista: artista.trim(),
-                link: link.trim(),
-                done: false,
-                dataCadastro: getTodayStr(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            showToast(`🎤 ${nome.trim()} entrou na fila!`);
-            return true;
-        } catch (error) {
-            console.error('Erro ao adicionar:', error);
-            showToast('⚠️ Erro ao adicionar. Tente novamente.');
-            return false;
-        }
-    }
-
     // ===== MARCAR COMO JÁ CANTOU =====
     async function markDone(id) {
         try {
@@ -644,36 +493,6 @@
             showToast('⚠️ Erro ao remover. Tente novamente.');
         }
     }
-
-    // ===== FORM SUBMIT =====
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const nome     = inputNome.value.trim();
-        const telefone = inputTelefone.value.trim();
-        const musica   = inputMusica.value.trim();
-        const artista  = inputArtista.value.trim();
-        const link     = inputLink.value.trim();
-
-        if (!nome || !musica || !artista) {
-            showToast('⚠️ Preencha nome, música e artista.');
-            return;
-        }
-
-        const btn = form.querySelector('.btn-primary');
-        btn.disabled = true;
-        btn.textContent = '⏳ Salvando...';
-
-        const added = await addSinger(nome, telefone, musica, artista, link);
-
-        btn.disabled = false;
-        btn.textContent = '➕ Adicionar à fila';
-
-        if (added) {
-            form.reset();
-            inputNome.focus();
-        }
-    });
 
     // ===== INICIA =====
     listenQueue();
