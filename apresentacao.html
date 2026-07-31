@@ -44,13 +44,13 @@
         }
 
         /* ===== STATUS ===== */
-        .status-bar {
+        .status-row {
             display: flex;
             align-items: center;
-            gap: 8px;
             justify-content: center;
-            margin-top: 6px;
-            font-size: 0.8rem;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
         }
         .status-dot {
             width: 8px;
@@ -60,6 +60,52 @@
         }
         .status-dot.online { background: #4ade80; }
         .status-dot.offline { background: #f87171; }
+        .conn-text { font-size: 0.8rem; color: #888; }
+
+        .avail-pill {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .avail-pill.open { background: rgba(70, 200, 70, 0.14); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.25); }
+        .avail-pill.closed { background: rgba(255, 70, 70, 0.14); color: #ff6b6b; border: 1px solid rgba(255, 70, 70, 0.25); }
+
+        /* ===== OVERLAY DE EVENTO ENCERRADO ===== */
+        .closed-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 100;
+            padding: 20px;
+        }
+        .closed-overlay.show { display: flex; }
+        .closed-overlay .icon { font-size: 5rem; }
+        .closed-overlay .title {
+            font-size: 2.2rem;
+            color: #ff6b6b;
+            font-weight: 800;
+            margin-top: 20px;
+        }
+        .closed-overlay .sub {
+            font-size: 1.1rem;
+            color: #999;
+            margin-top: 12px;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        .closed-overlay .hint {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 24px;
+        }
 
         /* ===== NOW PLAYING ===== */
         .now-playing {
@@ -157,20 +203,9 @@
         }
 
         .item-info { flex: 1; min-width: 0; }
-        .item-name {
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-        .item-music {
-            font-size: 1rem;
-            color: #bbb;
-            margin-top: 2px;
-        }
-        .item-artist {
-            font-size: 0.85rem;
-            color: #888;
-            font-style: italic;
-        }
+        .item-name { font-size: 1.3rem; font-weight: 600; }
+        .item-music { font-size: 1rem; color: #bbb; margin-top: 2px; }
+        .item-artist { font-size: 0.85rem; color: #888; font-style: italic; }
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
@@ -180,6 +215,8 @@
             .item-pos { font-size: 1.2rem; min-width: 36px; }
             .item-name { font-size: 1rem; }
             .item-music { font-size: 0.85rem; }
+            .closed-overlay .title { font-size: 1.5rem; }
+            .closed-overlay .icon { font-size: 3.5rem; }
         }
 
         /* ===== FULLSCREEN TV MODE ===== */
@@ -191,6 +228,8 @@
             .item-name { font-size: 1.6rem; }
             .item-music { font-size: 1.2rem; }
             .item-artist { font-size: 1rem; }
+            .closed-overlay .title { font-size: 3rem; }
+            .closed-overlay .sub { font-size: 1.3rem; }
         }
 
         /* ===== ANIMATION ===== */
@@ -204,13 +243,22 @@
 </head>
 <body>
 
+    <!-- OVERLAY: EVENTO ENCERRADO -->
+    <div class="closed-overlay" id="closedOverlay">
+        <div class="icon">🎤</div>
+        <div class="title">Evento encerrado</div>
+        <div class="sub" id="closedMsg">A fila do karaokê abre apenas durante o evento. Volte em breve!</div>
+        <div class="hint" id="closedHint">Este painel se atualiza automaticamente quando a fila reabrir</div>
+    </div>
+
     <!-- HEADER -->
     <div class="display-header">
         <h1>🎤 Fila do Karaokê</h1>
         <div class="sub">Próximas apresentações</div>
-        <div class="status-bar">
+        <div class="status-row">
             <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Conectando...</span>
+            <span class="conn-text" id="statusText">Conectando...</span>
+            <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
         </div>
     </div>
 
@@ -235,7 +283,7 @@
 
 <script>
     // ============================================================
-    // 🔥 CONFIGURAÇÃO DO FIREBASE (mesmo do index.html)
+    // 🔥 CONFIGURAÇÃO DO FIREBASE (mesmo dos outros arquivos)
     // ============================================================
     const firebaseConfig = {
         apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
@@ -250,18 +298,24 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const COLLECTION = 'karaoke_fila';
+    const CONFIG_PATH = 'config/disponibilidade';
 
     // ===== DOM =====
-    const nowContent = document.getElementById('nowContent');
-    const queueList  = document.getElementById('queueList');
-    const queueCount = document.getElementById('queueCount');
-    const statusDot  = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
+    const nowContent    = document.getElementById('nowContent');
+    const queueList     = document.getElementById('queueList');
+    const queueCount    = document.getElementById('queueCount');
+    const statusDot     = document.getElementById('statusDot');
+    const statusText    = document.getElementById('statusText');
+    const availPill     = document.getElementById('availPill');
+    const closedOverlay = document.getElementById('closedOverlay');
+    const closedMsg     = document.getElementById('closedMsg');
 
-    // ===== STATUS =====
+    let filaAberta = true;
+
+    // ===== STATUS DE CONEXÃO =====
     function setStatus(online) {
         statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
-        statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
+        statusText.textContent = online ? 'Online' : 'Offline';
     }
 
     // ===== ESCAPE =====
@@ -272,8 +326,90 @@
         return div.innerHTML;
     }
 
+    // ===== DATAS E HORAS (horário local) =====
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dia}`;
+    }
+    function formatTime(d) {
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    // ===== VERIFICA DISPONIBILIDADE (datas + horários) =====
+    async function verificarDisponibilidade() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (!doc.exists) return { aberto: true, msg: '' };
+            const cfg = doc.data();
+            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
+            return dentro
+                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+        } catch {
+            return { aberto: true, msg: '' };
+        }
+    }
+
+    // ===== ATUALIZA O ESTADO ABERTO/FECHADO =====
+    async function atualizarDisponibilidade() {
+        const res = await verificarDisponibilidade();
+        filaAberta = res.aberto;
+
+        if (res.aberto) {
+            availPill.className = 'avail-pill open';
+            availPill.textContent = '🟢 ' + (res.msg || 'Fila aberta');
+            closedOverlay.classList.remove('show');
+        } else {
+            availPill.className = 'avail-pill closed';
+            availPill.textContent = '🔴 Fila fechada';
+            closedMsg.textContent = res.msg || 'A fila do karaokê abre apenas durante o evento. Volte em breve!';
+            closedOverlay.classList.add('show');
+        }
+    }
+
     // ===== RENDER =====
     function render(singers) {
+        // Se a fila estiver fechada, o overlay já cobre a tela — renderiza mesmo assim por segurança
         const pending = singers.filter(s => !s.done);
         const done    = singers.filter(s => s.done);
 
@@ -343,6 +479,10 @@
 
     // ===== INICIA =====
     listenQueue();
+    atualizarDisponibilidade();
+
+    // Re-verifica a disponibilidade a cada 30 segundos (abre/fecha sozinho)
+    setInterval(atualizarDisponibilidade, 30000);
 </script>
 
 </body>
