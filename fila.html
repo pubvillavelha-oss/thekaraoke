@@ -519,7 +519,7 @@
                     </div>
                     <div class="item-actions">
                         ${linkHtml}
-                        ${!isDone ? `<button class="btn btn-success" onclick="markDone('${s.id}')">✔ Já cantou</button>` : ''}
+                        ${!isDone ? `<button class="btn btn-success" onclick="markDone('${s.id}')">✔ No Palco</button>` : ''}
                     </div>
                 </div>
             `;
@@ -533,7 +533,7 @@
     async function markDone(id) {
         try {
             await db.collection(COLLECTION).doc(id).update({ done: true });
-            showToast('✅ Cantor(a) marcado(a) como já cantou!');
+            showToast('✅ Cantor(a) já cantou!');
         } catch (error) {
             console.error('Erro ao marcar:', error);
             showToast('⚠️ Erro ao atualizar. Tente novamente.');
