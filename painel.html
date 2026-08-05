@@ -26,31 +26,9 @@
       margin-right: 5px;
     }
 
-    .toolbar input[type="text"] {
-      padding: 8px;
-      width: 320px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
     .toolbar input[type="file"] {
       color: #fff;
       font-size: 14px;
-    }
-
-    .toolbar button {
-      padding: 8px 16px;
-      background: #4f8cff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .toolbar button:hover {
-      background: #3a6fd8;
     }
 
     /* Layout em duas colunas */
@@ -87,23 +65,24 @@
 </head>
 <body>
 
-  <!-- Barra de controles com os dois campos -->
+  <!-- Barra de controles -->
   <div class="toolbar">
+    <!-- ===== CAMPO DE PÁGINA COMENTADO =====
     <label>Endereço da página:</label>
     <input type="text" id="urlInput" placeholder="https://exemplo.com/sua-pagina">
-
     <button onclick="carregarPagina()">Carregar página</button>
+    ========================================== -->
 
     <label>Vídeo MP4:</label>
     <input type="file" id="videoInput" accept="video/mp4">
   </div>
 
   <div class="container">
-    <!-- Seção 1: Página com atualização automática -->
+    <!-- Seção 1: Página fixa com atualização automática -->
     <div class="web-section">
       <iframe
         id="liveFrame"
-        src=""
+        src="https://pubvillavelha-oss.github.io/thekaraoke/apresentacao.html"
         allowfullscreen>
       </iframe>
     </div>
@@ -117,7 +96,8 @@
   </div>
 
   <script>
-    // ====== CAMPO 1: Carregar página pelo endereço digitado ======
+    // ===== FUNÇÃO DE CARREGAR PÁGINA COMENTADA (não é mais necessária) =====
+    /*
     function carregarPagina() {
       const url = document.getElementById('urlInput').value.trim();
       if (url) {
@@ -126,8 +106,9 @@
         alert('Digite o endereço da página.');
       }
     }
+    */
 
-    // ====== CAMPO 2: Ler o arquivo MP4 selecionado ======
+    // ===== Campo de vídeo: lê o arquivo MP4 selecionado =====
     document.getElementById('videoInput').addEventListener('change', function(event) {
       const arquivo = event.target.files[0];
       if (arquivo) {
@@ -138,7 +119,7 @@
       }
     });
 
-    // ====== Atualização automática da página ======
+    // ===== Atualização automática da página (recarrega a cada 30s) =====
     const iframe = document.getElementById('liveFrame');
     const intervalo = 30000; // 30 segundos (ajuste como quiser)
 
