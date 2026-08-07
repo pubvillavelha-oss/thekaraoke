@@ -47,6 +47,26 @@
       margin-top: 6px;
     }
 
+    /* Link "Fila do Karaoke" -> apresentacao.html */
+    .btn-fila {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 18px;
+      background: transparent;
+      border: 1px solid #e91e63;
+      border-radius: 8px;
+      color: #e91e63;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .btn-fila:hover {
+      background: #e91e63;
+      color: #fff;
+    }
+
     .form-group {
       margin-bottom: 16px;
     }
@@ -57,7 +77,7 @@
       font-weight: 600;
       margin-bottom: 6px;
       color: #cfcfe6;
-    } 
+    }
 
     .form-group input[type="text"],
     .form-group input[type="url"] {
@@ -143,6 +163,8 @@
     <div class="header">
       <h1>🎤 Fila do Karaokê</h1>
       <p>Preencha para entrar na fila</p>
+      <!-- Botão que leva à página de apresentação -->
+      <a href="apresentacao.html" class="btn-fila">🎤 Fila do Karaoke</a>
     </div>
 
     <!-- Status de disponibilidade -->
