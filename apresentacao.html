@@ -52,18 +52,20 @@ body {
   border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center;
 }
 .now-playing .label { font-size: 14px; color: #e74c3c; font-weight: 600; margin-bottom: 12px; }
-.now-playing .singer { font-size: 34px; font-weight: 700; margin-bottom: 4px; }
+/* Nome do cantor + estrela na mesma linha */
+.now-playing .singer {
+  font-size: 34px; font-weight: 700; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+/* Música + autor na mesma linha */
 .now-playing .music { font-size: 20px; color: #b8a8e0; margin-bottom: 4px; }
-.now-playing .artist { font-size: 16px; color: #8a7ab8; }
+.artist-inline { color: #8a7ab8; }
 .empty-now { color: #8a7ab8; padding: 16px; }
 
 /* Botão de Like (estrela) */
-.like-section {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 16px;
-}
 .like-btn {
   background: transparent; border: none; cursor: pointer;
-  font-size: 54px; color: #b8a8e0; line-height: 1;
+  font-size: 40px; color: #b8a8e0; line-height: 1;
   transition: transform 0.2s ease, color 0.2s ease; outline: none;
 }
 .like-btn:hover { transform: scale(1.15); color: #f1c40f; }
@@ -72,8 +74,7 @@ body {
 @keyframes pop {
   0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); }
 }
-.like-count { font-size: 20px; font-weight: 700; color: #f1c40f; }
-.like-label { font-size: 13px; color: #8a7ab8; }
+.like-count-inline { font-size: 20px; font-weight: 700; color: #f1c40f; }
 
 /* QUEUE */
 .queue-container {
@@ -196,7 +197,6 @@ function esc(str) {
 // ============================================================
 // ⭐ SISTEMA DE LIKES (ESTRELA)
 // ============================================================
-// Controle de like por usuário (localStorage) — 1 like por cantor por dispositivo
 function getLikedMap() {
   try { return JSON.parse(localStorage.getItem('karaoke_likes') || '{}'); }
   catch { return {}; }
@@ -218,7 +218,6 @@ async function darLike(singerId) {
       likes: firebase.firestore.FieldValue.increment(1)
     });
     markLiked(singerId);
-    // Atualiza o botão imediatamente (o onSnapshot também vai atualizar)
     const btn = document.getElementById('likeBtn');
     if (btn) {
       btn.classList.add('liked');
@@ -244,28 +243,26 @@ function render(singers) {
   if (lastDone) {
     const likes = lastDone.likes || 0;
     const liked = hasLiked(lastDone.id);
+    // Nome do cantor + estrela de like na mesma linha
+    // Música + autor na linha seguinte
     nowContent.innerHTML = `
-      <div class="singer">${esc(lastDone.nome)}</div>
-      <div class="music">🎵 ${esc(lastDone.musica)}</div>
-      <div class="artist">🎤 ${esc(lastDone.artista || 'Artista')}</div>
-
-      <div class="like-section">
+      <div class="singer">
+        ${esc(lastDone.nome)}
         <button class="like-btn ${liked ? 'liked' : ''}" id="likeBtn"
                 title="Curtir ${esc(lastDone.nome)}"
                 ${liked ? 'disabled' : ''}>
           ${liked ? '⭐' : '☆'}
         </button>
-        <div class="like-count" id="likeCount">${likes} ${likes === 1 ? 'like' : 'likes'}</div>
-        <div class="like-label">Toque na estrela para curtir</div>
+        <span class="like-count-inline" id="likeCount">${likes}</span>
       </div>
+      <div class="music">🎵 ${esc(lastDone.musica)} — <span class="artist-inline">${esc(lastDone.artista || 'Autor')}</span></div>
     `;
     const btn = document.getElementById('likeBtn');
     if (btn) btn.addEventListener('click', () => darLike(lastDone.id));
   } else if (nextUp) {
     nowContent.innerHTML = `
       <div class="singer">${esc(nextUp.nome)}</div>
-      <div class="music">🎵 ${esc(nextUp.musica)}</div>
-      <div class="artist">🎤 ${esc(nextUp.artista || 'Artista')}</div>
+      <div class="music">🎵 ${esc(nextUp.musica)} — <span class="artist-inline">${esc(nextUp.artista || 'Autor')}</span></div>
       <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
     `;
   } else {
