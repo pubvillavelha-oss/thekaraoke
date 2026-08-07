@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karaokê - Incluir na Fila</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #eaeaea;
+    }
+
+    .container {
+      background: #22223b;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: #b0b0c8;
+      margin-top: 6px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #cfcfe6;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="url"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #3a3a5c;
+      border-radius: 8px;
+      background: #2c2c48;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group input[type="url"]:focus {
+      border-color: #e91e63;
+    }
+
+    /* Checkbox "Apoio para cantar" */
+    .form-group-checkbox {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #cfcfe6;
+      user-select: none;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #e91e63;
+      cursor: pointer;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #e91e63;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .btn-submit:hover {
+      background: #c2185b;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #b0b0c8;
+    }
+
+    .status.success {
+      color: #4caf50;
+    }
+
+    .status.error {
+      color: #f44336;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎤 Fila do Karaokê</h1>
+      <p>Preencha para entrar na fila</p>
+    </div>
+
+    <!-- Status de disponibilidade -->
+    <div id="status-disponibilidade" class="status">
+      Verificando disponibilidade...
+    </div>
+
+    <!-- Mensagem de cadastros encerrados -->
+    <div id="mensagem-encerrado" class="status error hidden">
+      ⏰ Cadastros encerrados no momento
+      <br>
+      A fila do karaokê abre apenas durante o evento. Volte em breve!
+    </div>
+
+    <!-- Formulário -->
+    <form id="form-inclusao" novalidate>
+      <div class="form-group">
+        <label for="nome">Seu Nome *</label>
+        <input type="text" id="nome" name="nome" placeholder="Digite seu nome" required>
+      </div>
+
+      <!-- Checkbox "Apoio para cantar" - antes do campo da música -->
+      <div class="form-group form-group-checkbox">
+        <label class="checkbox-label" for="apoioCantar">
+          <input type="checkbox" id="apoioCantar" name="apoioCantar" value="sim">
+          <span>Apoio para cantar</span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="musica">Nome da Música *</label>
+        <input type="text" id="musica" name="musica" placeholder="Digite o nome da música" required>
+      </div>
+
+      <div class="form-group">
+        <label for="artista">Artista / Banda *</label>
+        <input type="text" id="artista" name="artista" placeholder="Digite o artista ou banda" required>
+      </div>
+
+      <div class="form-group">
+        <label for="link">Link da Música (YouTube / Spotify)</label>
+        <input type="url" id="link" name="link" placeholder="Cole o link aqui (opcional)">
+      </div>
+
+      <button type="submit" class="btn-submit">➕ Entrar na fila</button>
+    </form>
+
+    <!-- Mensagem de sucesso -->
+    <div id="mensagem-sucesso" class="status success hidden">
+      ✅ Você está na fila!
+      <br>
+      Aguardando sua vez de cantar 🎤
+      <br>
+      <small>Dados sincronizados em tempo real</small>
+    </div>
+  </div>
+
+  <script>
+    // Simula a verificação de disponibilidade
+    const statusDisponibilidade = document.getElementById('status-disponibilidade');
+    const mensagemEncerrado = document.getElementById('mensagem-encerrado');
+    const form = document.getElementById('form-inclusao');
+    const mensagemSucesso = document.getElementById('mensagem-sucesso');
+
+    // Exemplo: fila aberta (troque para true para simular encerramento)
+    const filaAberta = true;
+
+    setTimeout(() => {
+      if (filaAberta) {
+        statusDisponibilidade.classList.add('hidden');
+      } else {
+        statusDisponibilidade.classList.add('hidden');
+        mensagemEncerrado.classList.remove('hidden');
+        form.classList.add('hidden');
+      }
+    }, 800);
+
+    // Envio do formulário
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const dados = {
+        nome: document.getElementById('nome').value,
+        musica: document.getElementById('musica').value,
+        artista: document.getElementById('artista').value,
+        link: document.getElementById('link').value,
+        apoioCantar: document.getElementById('apoioCantar').checked // true/false
+      };
+
+      // Aqui você envia os dados para o backend/planilha/API
+      console.log('Dados enviados:', dados);
+
+      // Exibe a mensagem de sucesso
+      form.classList.add('hidden');
+      mensagemSucesso.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
