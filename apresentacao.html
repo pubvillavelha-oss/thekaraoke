@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Karaokê - ao Vivo</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.container { max-width: 900px; width: 100%; }
+
+/* Header */
+.header { text-align: center; margin-bottom: 20px; }
+.header .icon { font-size: 44px; }
+.header h1 { font-size: 26px; margin-top: 6px; }
+.header .sub { color: #b8a8e0; margin-top: 4px; }
+
+/* Status bar */
+.status-bar {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 12px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.status-dot.online { background: #2ecc71; }
+.status-dot.offline { background: #e74c3c; }
+.conn-text { font-size: 14px; }
+.avail-pill { font-size: 13px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.08); }
+.btn-enter {
+  display: inline-block; background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff; border: none; padding: 10px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+
+/* NOW PLAYING */
+.now-playing {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center;
+}
+.now-playing .label { font-size: 14px; color: #e74c3c; font-weight: 600; margin-bottom: 12px; }
+.now-playing .singer { font-size: 34px; font-weight: 700; margin-bottom: 4px; }
+.now-playing .music { font-size: 20px; color: #b8a8e0; margin-bottom: 4px; }
+.now-playing .artist { font-size: 16px; color: #8a7ab8; }
+.empty-now { color: #8a7ab8; padding: 16px; }
+
+/* Botão de Like (estrela) */
+.like-section {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 16px;
+}
+.like-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 54px; color: #b8a8e0; line-height: 1;
+  transition: transform 0.2s ease, color 0.2s ease; outline: none;
+}
+.like-btn:hover { transform: scale(1.15); color: #f1c40f; }
+.like-btn:active { transform: scale(0.9); }
+.like-btn.liked { color: #f1c40f; animation: pop 0.3s ease; }
+@keyframes pop {
+  0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); }
+}
+.like-count { font-size: 20px; font-weight: 700; color: #f1c40f; }
+.like-label { font-size: 13px; color: #8a7ab8; }
+
+/* QUEUE */
+.queue-container {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 20px;
+}
+.queue-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; justify-content: space-between; }
+.queue-title .count { color: #f1c40f; }
+.queue-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px;
+}
+.queue-item .pos {
+  width: 32px; height: 32px; background: #6c5ce7; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.queue-item .info { flex: 1; }
+.queue-item .info .name { font-weight: 600; }
+.queue-item .info .song { font-size: 14px; color: #b8a8e0; }
+.empty-queue { color: #8a7ab8; text-align: center; padding: 16px; }
+
+/* Overlay de fila fechada */
+.closed-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; text-align: center;
+}
+.closed-overlay.active { display: flex; }
+.closed-overlay h2 { font-size: 28px; margin-bottom: 8px; }
+.closed-overlay p { color: #b8a8e0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="icon">🎤</div>
+    <h1>Fila do Karaokê Cante no Villa</h1>
+    <div class="sub">Próximas apresentações</div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span class="conn-text" id="statusText">Conectando...</span>
+    <span class="avail-pill" id="availPill">Verificando disponibilidade...</span>
+    <a class="btn-enter" href="inclusao.html">➕ Entrar na Fila</a>
+  </div>
+
+  <!-- NOW PLAYING -->
+  <div class="now-playing" id="nowPlaying">
+    <div class="label">🔴 Cantando agora</div>
+    <div id="nowContent">
+      <div class="empty-now">Aguardando próximo cantor...</div>
+    </div>
+  </div>
+
+  <!-- QUEUE -->
+  <div class="queue-container" id="queueContainer">
+    <div class="queue-title">
+      <span>📋 Próximos da fila</span>
+      <span class="count" id="queueCount">0</span>
+    </div>
+    <div id="queueList">
+      <div class="empty-queue">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay de fila fechada -->
+<div class="closed-overlay" id="closedOverlay">
+  <div>
+    <div style="font-size:40px;">🎤</div>
+    <h2>Evento encerrado</h2>
+    <p id="closedMsg">A fila do karaokê abre apenas durante o evento. Volte em breve!</p>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 🔥 CONFIGURAÇÃO DO FIREBASE (mesma base do inclusao.html)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+  authDomain: "karaokevvp.firebaseapp.com",
+  projectId: "karaokevvp",
+  storageBucket: "karaokevvp.firebasestorage.app",
+  messagingSenderId: "938258818805",
+  appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COLLECTION = 'karaoke_fila';
+const CONFIG_PATH = 'config/disponibilidade';
+
+// ===== DOM =====
+const nowContent    = document.getElementById('nowContent');
+const queueList     = document.getElementById('queueList');
+const queueCount    = document.getElementById('queueCount');
+const statusDot     = document.getElementById('statusDot');
+const statusText    = document.getElementById('statusText');
+const availPill     = document.getElementById('availPill');
+const closedOverlay = document.getElementById('closedOverlay');
+const closedMsg     = document.getElementById('closedMsg');
+let filaAberta = true;
+
+// ===== STATUS DE CONEXÃO =====
+function setStatus(online) {
+  statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+  statusText.textContent = online ? 'Conectado' : 'Offline — reconectando...';
+}
+
+// ===== UTILITÁRIOS =====
+function esc(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+// ⭐ SISTEMA DE LIKES (ESTRELA)
+// ============================================================
+// Controle de like por usuário (localStorage) — 1 like por cantor por dispositivo
+function getLikedMap() {
+  try { return JSON.parse(localStorage.getItem('karaoke_likes') || '{}'); }
+  catch { return {}; }
+}
+function hasLiked(singerId) {
+  return !!getLikedMap()[singerId];
+}
+function markLiked(singerId) {
+  const map = getLikedMap();
+  map[singerId] = true;
+  localStorage.setItem('karaoke_likes', JSON.stringify(map));
+}
+
+// Registra o like no Firebase (incremento atômico)
+async function darLike(singerId) {
+  if (!singerId || hasLiked(singerId)) return;
+  try {
+    await db.collection(COLLECTION).doc(singerId).update({
+      likes: firebase.firestore.FieldValue.increment(1)
+    });
+    markLiked(singerId);
+    // Atualiza o botão imediatamente (o onSnapshot também vai atualizar)
+    const btn = document.getElementById('likeBtn');
+    if (btn) {
+      btn.classList.add('liked');
+      btn.textContent = '⭐';
+      btn.disabled = true;
+    }
+  } catch (error) {
+    console.error('Erro ao registrar like:', error);
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render(singers) {
+  const pending = singers.filter(s => !s.done);
+  const done    = singers.filter(s => s.done);
+
+  // --- NOW PLAYING ---
+  const lastDone = done.length > 0 ? done[done.length - 1] : null;
+  const nextUp   = pending.length > 0 ? pending[0] : null;
+
+  if (lastDone) {
+    const likes = lastDone.likes || 0;
+    const liked = hasLiked(lastDone.id);
+    nowContent.innerHTML = `
+      <div class="singer">${esc(lastDone.nome)}</div>
+      <div class="music">🎵 ${esc(lastDone.musica)}</div>
+      <div class="artist">🎤 ${esc(lastDone.artista || 'Artista')}</div>
+
+      <div class="like-section">
+        <button class="like-btn ${liked ? 'liked' : ''}" id="likeBtn"
+                title="Curtir ${esc(lastDone.nome)}"
+                ${liked ? 'disabled' : ''}>
+          ${liked ? '⭐' : '☆'}
+        </button>
+        <div class="like-count" id="likeCount">${likes} ${likes === 1 ? 'like' : 'likes'}</div>
+        <div class="like-label">Toque na estrela para curtir</div>
+      </div>
+    `;
+    const btn = document.getElementById('likeBtn');
+    if (btn) btn.addEventListener('click', () => darLike(lastDone.id));
+  } else if (nextUp) {
+    nowContent.innerHTML = `
+      <div class="singer">${esc(nextUp.nome)}</div>
+      <div class="music">🎵 ${esc(nextUp.musica)}</div>
+      <div class="artist">🎤 ${esc(nextUp.artista || 'Artista')}</div>
+      <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
+    `;
+  } else {
+    nowContent.innerHTML = `<div class="empty-now">Aguardando próximo cantor...</div>`;
+  }
+
+  // --- QUEUE ---
+  const showPending = lastDone ? pending : (pending.length > 1 ? pending.slice(1) : []);
+  if (showPending.length === 0) {
+    queueList.innerHTML = `<div class="empty-queue">Fila vazia — seja o próximo! 🎤</div>`;
+    queueCount.textContent = '0';
+    return;
+  }
+
+  queueCount.textContent = showPending.length;
+  queueList.innerHTML = showPending.map((s, i) => `
+    <div class="queue-item">
+      <div class="pos">${i + 1}</div>
+      <div class="info">
+        <div class="name">${esc(s.nome)}</div>
+        <div class="song">${esc(s.musica)} — ${esc(s.artista || '')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// DISPONIBILIDADE
+// ============================================================
+function cruzaMeiaNoite(ini, fim) {
+  return ini > fim;
+}
+function horaStr(d) {
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+async function atualizarDisponibilidade() {
+  try {
+    const doc = await db.doc(CONFIG_PATH).get();
+    if (!doc.exists) {
+      filaAberta = true;
+      availPill.textContent = 'Fila aberta';
+      closedOverlay.classList.remove('active');
+      return;
+    }
+    const cfg = doc.data();
+    if (cfg.ativo === false) {
+      filaAberta = false;
+      availPill.textContent = '🔴 Fila fechada';
+      closedMsg.textContent = cfg.msg || 'Cadastros encerrados pelo organizador.';
+      closedOverlay.classList.add('active');
+      return;
+    }
+    const agora = horaStr(new Date());
+    const horarioInicio = cfg.horarioInicio || '00:00';
+    const horarioFim = cfg.horarioFim || '23:59';
+    const dentro = cruzaMeiaNoite(horarioInicio, horarioFim)
+      ? (agora >= horarioInicio || agora <= horarioFim)
+      : (agora >= horarioInicio && agora <= horarioFim);
+    filaAberta = dentro;
+    availPill.textContent = dentro ? `Fila aberta até ${horarioFim}` : `Fila fechada (abre ${horarioInicio})`;
+    closedOverlay.classList.toggle('active', !dentro);
+  } catch (e) {
+    console.error('Erro ao verificar disponibilidade:', e);
+  }
+}
+
+// ============================================================
+// ESCUTA MUDANÇAS EM TEMPO REAL
+// ============================================================
+function listenQueue() {
+  db.collection(COLLECTION)
+    .orderBy('createdAt', 'asc')
+    .onSnapshot((snapshot) => {
+      const singers = [];
+      snapshot.forEach((doc) => {
+        singers.push({ id: doc.id, ...doc.data() });
+      });
+      render(singers);
+      setStatus(true);
+    }, (error) => {
+      console.error('Erro no Firestore:', error);
+      setStatus(false);
+    });
+}
+
+// ===== INICIA =====
+listenQueue();
+atualizarDisponibilidade();
+setInterval(atualizarDisponibilidade, 30000);
+</script>
+</body>
+</html>
