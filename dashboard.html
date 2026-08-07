@@ -9,25 +9,25 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
 :root {
-  --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);<br/>
-  --card-bg: rgba(255, 255, 255, 0.06);<br/>
-  --card-border: rgba(255, 255, 255, 0.12);<br/>
-  --text-main: #e0e0e0;<br/>
-  --text-dim: #b8a8e0;<br/>
-  --accent: #6c5ce7;<br/>
-  --gold: #f1c40f;<br/>
-  --red: #e74c3c;<br/>
+  --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text-main: #e0e0e0;
+  --text-dim: #b8a8e0;
+  --accent: #6c5ce7;
+  --gold: #f1c40f;
+  --red: #e74c3c;
   --green: #2ecc71;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;<br/>
-  background: var(--bg-gradient);<br/>
-  background-attachment: fixed;<br/>
-  color: var(--text-main);<br/>
-  min-height: 100vh;<br/>
-  padding: 20px;<br/>
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  padding: 20px;
   line-height: 1.5;
 }
 
@@ -35,86 +35,86 @@ body {
 
 /* Header */
 header {
-  display: flex; justify-content: space-between; align-items: center;<br/>
+  display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 30px; flex-wrap: wrap; gap: 15px;
 }
-.title-group h1 { font-size: 28px; letter-spacing: -0.5px; }<br/>
+.title-group h1 { font-size: 28px; letter-spacing: -0.5px; }
 .title-group p { color: var(--text-dim); font-size: 14px; }
 .conn-status {
-  display: flex; align-items: center; gap: 8px; font-size: 13px;<br/>
-  background: var(--card-bg); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--card-border);
+  display: flex; align-items: center; gap: 12px; font-size: 13px;
+  background: var(--card-bg); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--card-border);
 }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }<br/>
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
 .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
 /* Filtros */
 .filter-bar {
-  display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;<br/>
+  display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;
   background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--card-border);
 }
-.filter-group { display: flex; flex-direction: column; gap: 8px; }<br/>
-.filter-group label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); }<br/>
+.filter-group { display: flex; flex-direction: column; gap: 8px; }
+.filter-group label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); }
 .btn-group { display: flex; gap: 5px; }
 .btn-filter {
-  background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-main);<br/>
+  background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-main);
   padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s;
 }
-.btn-filter:hover { background: rgba(255,255,255,0.1); }<br/>
+.btn-filter:hover { background: rgba(255,255,255,0.1); }
 .btn-filter.active { background: var(--accent); border-color: var(--accent); font-weight: 600; }
 select.filter-select {
-  background: #1a1a2e; color: var(--text-main); border: 1px solid var(--card-border);<br/>
+  background: #1a1a2e; color: var(--text-main); border: 1px solid var(--card-border);
   padding: 8px 12px; border-radius: 6px; outline: none; min-width: 200px;
 }
 
 /* KPIs */
 .kpi-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));<br/>
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px; margin-bottom: 30px;
 }
 .kpi-card {
-  background: var(--card-bg); border: 1px solid var(--card-border);<br/>
+  background: var(--card-bg); border: 1px solid var(--card-border);
   padding: 20px; border-radius: 16px; text-align: center;
 }
-.kpi-card .val { font-size: 32px; font-weight: 800; display: block; margin-bottom: 4px; }<br/>
-.kpi-card .label { font-size: 13px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; }<br/>
+.kpi-card .val { font-size: 32px; font-weight: 800; display: block; margin-bottom: 4px; }
+.kpi-card .label { font-size: 13px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; }
 .kpi-card.highlight .val { color: var(--gold); }
 
 /* Dashboard Sections */
-.main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }<br/>
+.main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
 .full-width { grid-column: 1 / -1; }
 .section-card {
-  background: var(--card-bg); border: 1px solid var(--card-border);<br/>
+  background: var(--card-bg); border: 1px solid var(--card-border);
   border-radius: 20px; padding: 25px; display: flex; flex-direction: column; gap: 20px;
 }
 .section-title { font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 
 /* Destaque Campeão */
 .winner-box {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.2), rgba(162, 155, 254, 0.1));<br/>
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.2), rgba(162, 155, 254, 0.1));
   border-radius: 12px; padding: 15px; border-left: 4px solid var(--accent);
 }
-.winner-box .tag { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; display: block; }<br/>
-.winner-box .name { font-size: 20px; font-weight: 700; color: #fff; }<br/>
+.winner-box .tag { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; display: block; }
+.winner-box .name { font-size: 20px; font-weight: 700; color: #fff; }
 .winner-box .sub { font-size: 14px; color: var(--text-dim); }
 
 /* Gráficos Manuais */
-.bar-container { display: flex; flex-direction: column; gap: 12px; }<br/>
-.bar-row { display: flex; flex-direction: column; gap: 4px; }<br/>
-.bar-info { display: flex; justify-content: space-between; font-size: 13px; }<br/>
-.bar-outer { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }<br/>
+.bar-container { display: flex; flex-direction: column; gap: 12px; }
+.bar-row { display: flex; flex-direction: column; gap: 4px; }
+.bar-info { display: flex; justify-content: space-between; font-size: 13px; }
+.bar-outer { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
 .bar-inner { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.8s ease-out; }
 
 .donut-container { display: flex; align-items: center; gap: 20px; justify-content: center; padding: 10px 0; }
 .donut {
-  width: 120px; height: 120px; border-radius: 50%;<br/>
-  background: conic-gradient(var(--accent) 0% 40%, #a29bfe 40% 70%, #fab1a0 70% 85%, #55efc4 85% 95%, #ffeaa7 95% 100%);<br/>
+  width: 120px; height: 120px; border-radius: 50%;
+  background: conic-gradient(var(--accent) 0% 40%, #a29bfe 40% 70%, #fab1a0 70% 85%, #55efc4 85% 95%, #ffeaa7 95% 100%);
   position: relative; flex-shrink: 0;
 }
-.donut::after {<br/>
+.donut::after {
   content: ""; position: absolute; inset: 25px; background: #1e1b3a; border-radius: 50%;
 }
-.donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }<br/>
-.legend-item { display: flex; align-items: center; gap: 8px; }<br/>
+.donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
 .legend-color { width: 10px; height: 10px; border-radius: 2px; }
 
 /* Pódio */
@@ -124,35 +124,35 @@ select.filter-select {
 .podium-place {
   display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100px;
 }
-.podium-bar { width: 100%; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; color: rgba(255,255,255,0.5); }<br/>
-.place-1 { height: 100px; background: linear-gradient(to top, #f1c40f, #f39c12); color: #fff !important; }<br/>
-.place-2 { height: 70px; background: linear-gradient(to top, #bdc3c7, #95a5a6); }<br/>
-.place-3 { height: 50px; background: linear-gradient(to top, #cd7f32, #a0522d); }<br/>
+.podium-bar { width: 100%; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; color: rgba(255,255,255,0.5); }
+.place-1 { height: 100px; background: linear-gradient(to top, #f1c40f, #f39c12); color: #fff !important; }
+.place-2 { height: 70px; background: linear-gradient(to top, #bdc3c7, #95a5a6); }
+.place-3 { height: 50px; background: linear-gradient(to top, #cd7f32, #a0522d); }
 .podium-name { font-size: 13px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
 
 /* Tabelas */
-.table-wrapper { overflow-x: auto; }<br/>
-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }<br/>
-th { padding: 12px; border-bottom: 1px solid var(--card-border); color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; }<br/>
-td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }<br/>
-tr:last-child td { border-bottom: none; }<br/>
-.rank-num { font-weight: 800; color: var(--text-dim); width: 40px; }<br/>
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+th { padding: 12px; border-bottom: 1px solid var(--card-border); color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+tr:last-child td { border-bottom: none; }
+.rank-num { font-weight: 800; color: var(--text-dim); width: 40px; }
 .likes-cell { font-weight: 700; color: var(--gold); }
 
 /* Estados */
 .loading-overlay {
-  position: fixed; inset: 0; background: var(--bg-gradient);<br/>
-  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;<br/>
+  position: fixed; inset: 0; background: var(--bg-gradient);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
   transition: opacity 0.5s;
 }
-.spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }<br/>
+.spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .empty-state { text-align: center; padding: 40px; color: var(--text-dim); font-style: italic; }
 
-@media (max-width: 900px) {<br/>
-  .main-grid { grid-template-columns: 1fr; }<br/>
-  .header { justify-content: center; text-align: center; }<br/>
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .header { justify-content: center; text-align: center; }
   .filter-bar { justify-content: center; }
 }
 </style>
@@ -173,6 +173,7 @@ tr:last-child td { border-bottom: none; }<br/>
     <div class="conn-status">
       <div id="connDot" class="dot"></div>
       <span id="connText">Conectando...</span>
+      <button onclick="location.reload()" style="background:var(--accent);border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">↻ Tentar novamente</button>
     </div>
   </header>
 
@@ -191,6 +192,10 @@ tr:last-child td { border-bottom: none; }<br/>
       <select id="artistFilter" class="filter-select" onchange="handleArtistFilter()">
         <option value="todos">Todos os artistas</option>
       </select>
+    </div>
+    <div class="filter-group">
+      <label>Teste</label>
+      <button onclick="loadDemoData()" style="background:var(--gold);border:none;color:#1a1a2e;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;">🧪 Usar dados de exemplo</button>
     </div>
   </div>
 
@@ -310,11 +315,11 @@ tr:last-child td { border-bottom: none; }<br/>
 // 🔥 CONFIGURAÇÃO FIREBASE
 // 
 const firebaseConfig = {
-  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",<br/>
-  authDomain: "karaokevvp.firebaseapp.com",<br/>
-  projectId: "karaokevvp",<br/>
-  storageBucket: "karaokevvp.firebasestorage.app",<br/>
-  messagingSenderId: "938258818805",<br/>
+  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+  authDomain: "karaokevvp.firebaseapp.com",
+  projectId: "karaokevvp",
+  storageBucket: "karaokevvp.firebasestorage.app",
+  messagingSenderId: "938258818805",
   appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
 };
 
@@ -330,12 +335,57 @@ let selectedArtist = 'todos';
 // Cores para o gráfico de rosca
 const donutColors = ['#6c5ce7', '#a29bfe', '#fab1a0', '#55efc4', '#ffeaa7'];
 
+// Dados de Exemplo para Modo de Demonstração
+const demo = [
+  { nome: 'Ana', musica: 'Evidências', artista: 'Chitãozinho & Xororó', done: true, likes: 25, dataCadastro: '2026-07-28', dateObj: new Date('2026-07-28T20:00:00') },
+  { nome: 'Bruno', musica: 'Aquarela', artista: 'Toquinho', done: true, likes: 18, dataCadastro: '2026-07-28', dateObj: new Date('2026-07-28T21:00:00') },
+  { nome: 'Carla', musica: 'Evidências', artista: 'Chitãozinho & Xororó', done: true, likes: 30, dataCadastro: '2026-07-29', dateObj: new Date('2026-07-29T20:00:00') },
+  { nome: 'Diego', musica: 'Tocando em Frente', artista: 'Almir Sater', done: true, likes: 12, dataCadastro: '2026-07-29', dateObj: new Date('2026-07-29T21:30:00') },
+  { nome: 'Ana', musica: 'Fico Assim Sem Você', artista: 'Adriana Calcanhotto', done: true, likes: 22, dataCadastro: '2026-07-30', dateObj: new Date('2026-07-30T20:00:00') },
+  { nome: 'Edu', musica: 'Aquarela', artista: 'Toquinho', done: true, likes: 15, dataCadastro: '2026-07-30', dateObj: new Date('2026-07-30T21:00:00') },
+  { nome: 'Fernanda', musica: 'Evidências', artista: 'Chitãozinho & Xororó', done: true, likes: 28, dataCadastro: '2026-07-31', dateObj: new Date('2026-07-31T20:00:00') },
+  { nome: 'Gustavo', musica: 'Tocando em Frente', artista: 'Almir Sater', done: true, likes: 10, dataCadastro: '2026-07-31', dateObj: new Date('2026-07-31T21:30:00') },
+  { nome: 'Helena', musica: 'Aquarela', artista: 'Toquinho', done: true, likes: 20, dataCadastro: '2026-08-01', dateObj: new Date('2026-08-01T20:00:00') },
+  { nome: 'Igor', musica: 'Fico Assim Sem Você', artista: 'Adriana Calcanhotto', done: true, likes: 17, dataCadastro: '2026-08-01', dateObj: new Date('2026-08-01T21:00:00') },
+  { nome: 'Julia', musica: 'Evidências', artista: 'Chitãozinho & Xororó', done: true, likes: 35, dataCadastro: '2026-08-02', dateObj: new Date('2026-08-02T20:00:00') },
+  { nome: 'Lucas', musica: 'Tocando em Frente', artista: 'Almir Sater', done: true, likes: 14, dataCadastro: '2026-08-02', dateObj: new Date('2026-08-02T21:30:00') },
+  { nome: 'Marina', musica: 'Aquarela', artista: 'Toquinho', done: true, likes: 19, dataCadastro: '2026-08-03', dateObj: new Date('2026-08-03T20:00:00') },
+  { nome: 'Nando', musica: 'Evidências', artista: 'Chitãozinho & Xororó', done: true, likes: 26, dataCadastro: '2026-08-03', dateObj: new Date('2026-08-03T21:00:00') },
+  { nome: 'Paula', musica: 'Fico Assim Sem Você', artista: 'Adriana Calcanhotto', done: false, likes: 8, dataCadastro: '2026-08-04', dateObj: new Date('2026-08-04T20:00:00') },
+  { nome: 'Rafael', musica: 'Aquarela', artista: 'Toquinho', done: false, likes: 5, dataCadastro: '2026-08-04', dateObj: new Date('2026-08-04T21:00:00') }
+];
+
+function loadDemoData() {
+  rawData = demo.map(d => ({ ...d }));
+  // Remove o overlay de carregamento
+  document.getElementById('loading').style.opacity = '0';
+  setTimeout(() => document.getElementById('loading').style.display = 'none', 300);
+  document.getElementById('connDot').classList.add('online');
+  document.getElementById('connText').textContent = 'Modo demonstração';
+  updateArtistDropdown();
+  processData();
+}
+
 // 
 // INICIALIZAÇÃO E REAL-TIME
 // 
 function init() {
   document.getElementById('currentDate').textContent = "07 de agosto de 2026";
   
+  // TIMEOUT DE SEGURANÇA: Evita que a tela de carregamento fique presa
+  setTimeout(() => {
+    if (document.getElementById('loading').style.display !== 'none') {
+      document.getElementById('loading').style.display = 'none';
+      const containers = ['musicTable', 'artistTable', 'likesTable', 'likesBars'];
+      containers.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<tr><td colspan="4" class="empty-state">Não foi possível conectar ao Firebase. Verifique sua conexão e recarregue a página ou use os dados de exemplo.</td></tr>';
+      });
+      document.getElementById('connDot').classList.remove('online');
+      document.getElementById('connText').textContent = 'Falha na conexão';
+    }
+  }, 8000);
+
   db.collection(COLLECTION).onSnapshot((snapshot) => {
     rawData = [];
     snapshot.forEach(doc => {
@@ -353,6 +403,7 @@ function init() {
     updateArtistDropdown();
     processData();
     
+    // Remove overlay no primeiro snapshot (mesmo que vazio)
     document.getElementById('loading').style.opacity = '0';
     setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
     
@@ -360,6 +411,10 @@ function init() {
     document.getElementById('connText').textContent = 'Online';
   }, (err) => {
     console.error(err);
+    // Garante remoção do overlay em caso de erro
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+    
     document.getElementById('connDot').classList.remove('online');
     document.getElementById('connText').textContent = 'Erro de Conexão';
   });
@@ -371,7 +426,9 @@ function init() {
 function setPeriod(p) {
   currentPeriod = p;
   document.querySelectorAll('.btn-filter').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(p.replace('7d','7').replace('30d','30')));
+    btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === p.toLowerCase()
+      || (p === '7d' && btn.textContent.trim() === '7 dias')
+      || (p === '30d' && btn.textContent.trim() === '30 dias'));
   });
   processData();
 }
