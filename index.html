@@ -21,7 +21,6 @@
             padding: 20px;
         }
         .container { max-width: 780px; margin: 0 auto; }
-
         header { text-align: center; padding: 30px 0 20px; }
         header h1 {
             font-size: 2.2rem;
@@ -31,7 +30,6 @@
             background-clip: text;
         }
         header p { color: #aaa; margin-top: 6px; font-size: 0.95rem; }
-
         .header-actions {
             margin-top: 14px;
             display: flex;
@@ -55,7 +53,6 @@
         .btn-header.blue { background: linear-gradient(90deg, #6ba3ff, #8f6bff); color: #fff; }
         .btn-header.orange { background: linear-gradient(90deg, #f7971e, #ffd200); color: #1a1a2e; }
         .btn-header.gray { background: rgba(255,255,255,0.12); color: #ddd; border: 1px solid rgba(255,255,255,0.15); }
-
         .status-bar {
             display: flex;
             align-items: center;
@@ -73,7 +70,6 @@
         }
         .status-dot.online { background: #4ade80; }
         .status-dot.offline { background: #f87171; }
-
         .avail-pill {
             display: inline-block;
             padding: 4px 14px;
@@ -84,7 +80,6 @@
         }
         .avail-pill.open { background: rgba(70, 200, 70, 0.12); color: #6bff6b; }
         .avail-pill.closed { background: rgba(255, 70, 70, 0.12); color: #ff6b6b; }
-
         .card {
             background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(12px);
@@ -93,7 +88,6 @@
             padding: 24px;
             margin-bottom: 20px;
         }
-
         .queue-header {
             display: flex;
             justify-content: space-between;
@@ -119,14 +113,12 @@
             font-size: 0.8rem;
             font-weight: 600;
         }
-
         .empty-msg {
             text-align: center;
             color: #666;
             padding: 40px 0;
             font-style: italic;
         }
-
         .singer-item {
             display: flex;
             align-items: center;
@@ -141,7 +133,6 @@
         .singer-item:hover { background: rgba(255, 255, 255, 0.07); }
         .singer-item.done { opacity: 0.5; order: 999; }
         .singer-item.done .singer-name { text-decoration: line-through; }
-
         .singer-pos {
             font-size: 1.3rem;
             font-weight: 800;
@@ -149,13 +140,11 @@
             min-width: 32px;
             text-align: center;
         }
-
         .singer-info { flex: 1; min-width: 0; }
         .singer-name { font-weight: 600; font-size: 1rem; }
         .singer-phone { font-size: 0.8rem; color: #999; margin-top: 2px; }
         .singer-song { font-size: 0.85rem; color: #bbb; margin-top: 2px; }
         .singer-artist { font-size: 0.8rem; color: #888; margin-top: 1px; font-style: italic; }
-
         .singer-actions {
             display: flex;
             gap: 6px;
@@ -163,7 +152,6 @@
             align-items: center;
             flex-wrap: wrap;
         }
-
         .btn {
             padding: 8px 14px;
             border: none;
@@ -180,7 +168,6 @@
         .btn-success { background: rgba(70, 200, 70, 0.15); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.25); }
         .btn-danger { background: rgba(255, 70, 70, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 70, 70, 0.25); }
         .btn-link { background: rgba(70, 130, 255, 0.15); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.25); }
-
         footer {
             text-align: center;
             padding: 30px 0 10px;
@@ -188,13 +175,23 @@
             font-size: 0.8rem;
         }
         footer a { color: #777; text-decoration: none; }
-
+        /* ===== PROTEÇÃO: OVERLAY DE VERIFICAÇÃO ===== */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #aaa;
+            font-size: 1rem;
+            z-index: 1000;
+        }
         @media (max-width: 600px) {
             header h1 { font-size: 1.6rem; }
             .singer-item { flex-wrap: wrap; }
             .singer-actions { width: 100%; justify-content: flex-end; }
         }
-
         .toast {
             position: fixed;
             bottom: 30px;
@@ -217,290 +214,295 @@
     </style>
 </head>
 <body>
+    <!-- Overlay: cobre a página enquanto a sessão é verificada -->
+    <div id="overlay">🔒 Verificando acesso...</div>
 
-<div class="container">
-
-    <header>
-        <h1>🎤 Fila do Karaokê</h1>
-        <p>Gerenciamento da fila de cantores</p>
-        <div class="header-actions">
-            <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-header blue">📺 Apresentação</a>
-            <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>
-            <a href="config.html" target="_blank" rel="noopener" class="btn-header gray">⚙️ Configuração</a>
-        </div>
-        <div class="status-bar">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Conectando...</span>
-        </div>
-        <div>
-            <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
-        </div>
-    </header>
-
-    <!-- QUEUE -->
-    <div class="card">
-        <div class="queue-header">
-            <h2>📋 Fila de Cantores</h2>
+    <div class="container">
+        <header>
+            <h1>🎤 Fila do Karaokê</h1>
+            <p>Gerenciamento da fila de cantores</p>
+            <div class="header-actions">
+                <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-header blue">📺 Apresentação</a>
+                <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>
+                <a href="config.html" target="_blank" rel="noopener" class="btn-header gray">⚙️ Configuração</a>
+                <button type="button" class="btn-header gray" id="btnSair">🚪 Sair</button>
+            </div>
+            <div class="status-bar">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Conectando...</span>
+            </div>
             <div>
-                <span class="daily-limit" id="dailyLimit">📅 0 / 60 hoje</span>
-                <span class="queue-count" id="queueCount">0 na fila</span>
+                <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
+            </div>
+        </header>
+        <!-- QUEUE -->
+        <div class="card">
+            <div class="queue-header">
+                <h2>📋 Fila de Cantores</h2>
+                <div>
+                    <span class="daily-limit" id="dailyLimit">📅 0 / 60 hoje</span>
+                    <span class="queue-count" id="queueCount">0 na fila</span>
+                </div>
+            </div>
+            <div id="queueList">
+                <div class="empty-msg">Carregando fila...</div>
             </div>
         </div>
-        <div id="queueList">
-            <div class="empty-msg">Carregando fila...</div>
-        </div>
+        <footer>
+            Feito com ❤️ para o karaokê &mdash; Dados sincronizados em tempo real
+        </footer>
     </div>
+    <div class="toast" id="toast"></div>
 
-    <footer>
-        Feito com ❤️ para o karaokê &mdash; Dados sincronizados em tempo real
-    </footer>
-</div>
+    <script>
+        // ============================================================
+        // 🔥 CONFIGURAÇÃO DO FIREBASE
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+            authDomain: "karaokevvp.firebaseapp.com",
+            projectId: "karaokevvp",
+            storageBucket: "karaokevvp.firebasestorage.app",
+            messagingSenderId: "938258818805",
+            appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+        };
+        // ===== INICIALIZA FIREBASE =====
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const COLLECTION = 'karaoke_fila';
+        const CONFIG_PATH = 'config/disponibilidade';
 
-<div class="toast" id="toast"></div>
+        // ============================================================
+        // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE A PÁGINA PARA USUÁRIOS LOGADOS
+        // ============================================================
+        const auth = firebase.auth();
+        const overlay = document.getElementById('overlay');
 
-<script>
-    // ============================================================
-    // 🔥 CONFIGURAÇÃO DO FIREBASE
-    // ============================================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
-        authDomain: "karaokevvp.firebaseapp.com",
-        projectId: "karaokevvp",
-        storageBucket: "karaokevvp.firebasestorage.app",
-        messagingSenderId: "938258818805",
-        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
-    };
-
-    // ===== INICIALIZA FIREBASE =====
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const COLLECTION = 'karaoke_fila';
-    const CONFIG_PATH = 'config/disponibilidade';
-
-    // ===== DOM =====
-    const queueList     = document.getElementById('queueList');
-    const queueCount    = document.getElementById('queueCount');
-    const dailyLimitEl  = document.getElementById('dailyLimit');
-    const statusDot     = document.getElementById('statusDot');
-    const statusText    = document.getElementById('statusText');
-    const availPill     = document.getElementById('availPill');
-
-    let toastTimer = null;
-    function showToast(msg) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-    }
-
-    function setStatus(online) {
-        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
-        statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
-    }
-
-    // ===== DATAS E HORAS (horário local) =====
-    function formatDate(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dia = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dia}`;
-    }
-    function formatTime(d) {
-        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    }
-
-    // ===== LIMITE DIÁRIO DINÂMICO (lê da configuração) =====
-    async function getLimiteDiario() {
-        try {
-            const doc = await db.doc(CONFIG_PATH).get();
-            if (doc.exists && doc.data().limiteDiario) return Number(doc.data().limiteDiario);
-        } catch {}
-        return 60;
-    }
-
-    // ===== VERIFICA DISPONIBILIDADE (datas + horários) =====
-    async function verificarDisponibilidade() {
-        try {
-            const doc = await db.doc(CONFIG_PATH).get();
-            if (!doc.exists) return { aberto: true, msg: '' };
-            const cfg = doc.data();
-            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
-
-            const dataInicio = cfg.dataInicio || '';
-            const dataFim = cfg.dataFim || '';
-            const horarioInicio = cfg.horarioInicio || '';
-            const horarioFim = cfg.horarioFim || '';
-
-            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
-
-            const now = new Date();
-            const hoje = formatDate(now);
-            const agora = formatTime(now);
-
-            if (hoje < dataInicio || hoje > dataFim) {
-                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                // Não está logado → vai para a tela de login
+                window.location.href = 'admin.html';
+                return;
             }
+            // Está logado → libera a página e inicia o app
+            overlay.style.display = 'none';
+            listenQueue();
+            atualizarDisponibilidadeUI();
+            setInterval(atualizarDisponibilidadeUI, 30000);
+        });
 
-            const cruzaMeiaNoite = horarioFim < horarioInicio;
-
-            if (dataInicio === dataFim) {
-                const dentro = agora >= horarioInicio && agora <= horarioFim;
-                return dentro
-                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
-                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
-            }
-
-            if (hoje === dataInicio) {
-                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
-                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
-            }
-
-            if (hoje === dataFim) {
-                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
-                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
-            }
-
-            const dentro = cruzaMeiaNoite
-                ? (agora >= horarioInicio || agora <= horarioFim)
-                : (agora >= horarioInicio && agora <= horarioFim);
-            return dentro
-                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
-                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
-        } catch {
-            return { aberto: true, msg: '' };
-        }
-    }
-
-    // ===== ATUALIZA O AVISO DE DISPONIBILIDADE NA TELA =====
-    async function atualizarDisponibilidadeUI() {
-        const res = await verificarDisponibilidade();
-        if (res.aberto) {
-            availPill.className = 'avail-pill open';
-            availPill.textContent = '🟢 ' + (res.msg || 'Fila aberta');
-        } else {
-            availPill.className = 'avail-pill closed';
-            availPill.textContent = '🔴 ' + (res.msg || 'Fila fechada');
-        }
-    }
-
-    // ===== CONTADOR DIÁRIO =====
-    function getTodayStr() {
-        return new Date().toISOString().slice(0, 10);
-    }
-
-    async function getDailyCount() {
-        try {
-            const snapshot = await db.collection(COLLECTION)
-                .where('dataCadastro', '==', getTodayStr())
-                .get();
-            return snapshot.size;
-        } catch { return 0; }
-    }
-
-    // ===== ESCAPE =====
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    // ===== RENDER =====
-    function render(singers) {
-        const pending = singers.filter(s => !s.done);
-        const done    = singers.filter(s => s.done);
-
-        if (singers.length === 0) {
-            queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. A fila está vazia! 🎤</div>`;
-            queueCount.textContent = '0 na fila';
-            getLimiteDiario().then(limite => {
-                dailyLimitEl.textContent = `📅 0 / ${limite} hoje`;
-            });
-            return;
-        }
-
-        const sorted = [...pending, ...done];
-
-        queueList.innerHTML = sorted.map((s, idx) => {
-            const pos = idx + 1;
-            const isDone = s.done;
-            const phoneDisplay = s.telefone ? `📞 ${s.telefone}` : '';
-
-            return `
-                <div class="singer-item ${isDone ? 'done' : ''}" data-id="${s.id}">
-                    <div class="singer-pos">${isDone ? '✅' : `#${pos}`}</div>
-                    <div class="singer-info">
-                        <div class="singer-name">${escapeHtml(s.nome)}</div>
-                        <div class="singer-artist">🎤 ${escapeHtml(s.artista)}</div>
-                        <div class="singer-song">🎵 ${escapeHtml(s.musica)}</div>
-                        ${phoneDisplay ? `<div class="singer-phone">${phoneDisplay}</div>` : ''}
-                    </div>
-                    <div class="singer-actions">
-                        ${s.link ? `<a href="${escapeHtml(s.link)}" target="_blank" rel="noopener" class="btn btn-link">🔗 Ouvir</a>` : ''}
-                        ${!isDone ? `<button class="btn btn-success" onclick="markDone('${s.id}')">✔ Já cantou</button>` : ''}
-                        <button class="btn btn-danger" onclick="removeSinger('${s.id}')">✕ Remover</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        const pendCount = pending.length;
-        queueCount.textContent = `${pendCount} na fila`;
-
-        getLimiteDiario().then(limite => {
-            getDailyCount().then(count => {
-                dailyLimitEl.textContent = `📅 ${count} / ${limite} hoje`;
+        // Botão Sair
+        document.getElementById('btnSair').addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'admin.html';
             });
         });
-    }
 
-    // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
-    function listenQueue() {
-        db.collection(COLLECTION)
-            .orderBy('createdAt', 'asc')
-            .onSnapshot((snapshot) => {
-                const singers = [];
-                snapshot.forEach((doc) => {
-                    singers.push({ id: doc.id, ...doc.data() });
+        // ===== DOM =====
+        const queueList     = document.getElementById('queueList');
+        const queueCount    = document.getElementById('queueCount');
+        const dailyLimitEl  = document.getElementById('dailyLimit');
+        const statusDot     = document.getElementById('statusDot');
+        const statusText    = document.getElementById('statusText');
+        const availPill     = document.getElementById('availPill');
+        let toastTimer = null;
+
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function setStatus(online) {
+            statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+            statusText.textContent = online ? 'Online — dados em tempo real' : 'Offline — sem conexão';
+        }
+
+        // ===== DATAS E HORAS (horário local) =====
+        function formatDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dia}`;
+        }
+        function formatTime(d) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        // ===== LIMITE DIÁRIO DINÂMICO (lê da configuração) =====
+        async function getLimiteDiario() {
+            try {
+                const doc = await db.doc(CONFIG_PATH).get();
+                if (doc.exists && doc.data().limiteDiario) return Number(doc.data().limiteDiario);
+            } catch {}
+            return 60;
+        }
+
+        // ===== VERIFICA DISPONIBILIDADE (datas + horários) =====
+        async function verificarDisponibilidade() {
+            try {
+                const doc = await db.doc(CONFIG_PATH).get();
+                if (!doc.exists) return { aberto: true, msg: '' };
+                const cfg = doc.data();
+                if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+                const dataInicio = cfg.dataInicio || '';
+                const dataFim = cfg.dataFim || '';
+                const horarioInicio = cfg.horarioInicio || '';
+                const horarioFim = cfg.horarioFim || '';
+                if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+                const now = new Date();
+                const hoje = formatDate(now);
+                const agora = formatTime(now);
+                if (hoje < dataInicio || hoje > dataFim) {
+                    return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+                }
+                const cruzaMeiaNoite = horarioFim < horarioInicio;
+                if (dataInicio === dataFim) {
+                    const dentro = agora >= horarioInicio && agora <= horarioFim;
+                    return dentro
+                        ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                        : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+                }
+                if (hoje === dataInicio) {
+                    if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                    return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+                }
+                if (hoje === dataFim) {
+                    if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                    return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+                }
+                const dentro = cruzaMeiaNoite
+                    ? (agora >= horarioInicio || agora <= horarioFim)
+                    : (agora >= horarioInicio && agora <= horarioFim);
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+            } catch {
+                return { aberto: true, msg: '' };
+            }
+        }
+
+        // ===== ATUALIZA O AVISO DE DISPONIBILIDADE NA TELA =====
+        async function atualizarDisponibilidadeUI() {
+            const res = await verificarDisponibilidade();
+            if (res.aberto) {
+                availPill.className = 'avail-pill open';
+                availPill.textContent = '🟢 ' + (res.msg || 'Fila aberta');
+            } else {
+                availPill.className = 'avail-pill closed';
+                availPill.textContent = '🔴 ' + (res.msg || 'Fila fechada');
+            }
+        }
+
+        // ===== CONTADOR DIÁRIO =====
+        function getTodayStr() {
+            return new Date().toISOString().slice(0, 10);
+        }
+        async function getDailyCount() {
+            try {
+                const snapshot = await db.collection(COLLECTION)
+                    .where('dataCadastro', '==', getTodayStr())
+                    .get();
+                return snapshot.size;
+            } catch { return 0; }
+        }
+
+        // ===== ESCAPE =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ===== RENDER =====
+        function render(singers) {
+            const pending = singers.filter(s => !s.done);
+            const done    = singers.filter(s => s.done);
+            if (singers.length === 0) {
+                queueList.innerHTML = `<div class="empty-msg">Ninguém na fila ainda. A fila está vazia! 🎤</div>`;
+                queueCount.textContent = '0 na fila';
+                getLimiteDiario().then(limite => {
+                    dailyLimitEl.textContent = `📅 0 / ${limite} hoje`;
                 });
-                render(singers);
-                setStatus(true);
-            }, (error) => {
-                console.error('Erro no Firestore:', error);
-                setStatus(false);
+                return;
+            }
+            const sorted = [...pending, ...done];
+            queueList.innerHTML = sorted.map((s, idx) => {
+                const pos = idx + 1;
+                const isDone = s.done;
+                const phoneDisplay = s.telefone ? `📞 ${s.telefone}` : '';
+                return `
+                    <div class="singer-item ${isDone ? 'done' : ''}" data-id="${s.id}">
+                        <div class="singer-pos">${isDone ? '✅' : `#${pos}`}</div>
+                        <div class="singer-info">
+                            <div class="singer-name">${escapeHtml(s.nome)}</div>
+                            <div class="singer-artist">🎤 ${escapeHtml(s.artista)}</div>
+                            <div class="singer-song">🎵 ${escapeHtml(s.musica)}</div>
+                            ${phoneDisplay ? `<div class="singer-phone">${phoneDisplay}</div>` : ''}
+                        </div>
+                        <div class="singer-actions">
+                            ${s.link ? `<a href="${escapeHtml(s.link)}" target="_blank" rel="noopener" class="btn btn-link">🔗 Ouvir</a>` : ''}
+                            ${!isDone ? `<button class="btn btn-success" onclick="markDone('${s.id}')">✔ Já cantou</button>` : ''}
+                            <button class="btn btn-danger" onclick="removeSinger('${s.id}')">✕ Remover</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            const pendCount = pending.length;
+            queueCount.textContent = `${pendCount} na fila`;
+            getLimiteDiario().then(limite => {
+                getDailyCount().then(count => {
+                    dailyLimitEl.textContent = `📅 ${count} / ${limite} hoje`;
+                });
             });
-    }
-
-    // ===== MARCAR COMO JÁ CANTOU =====
-    async function markDone(id) {
-        try {
-            await db.collection(COLLECTION).doc(id).update({ done: true });
-            showToast('✅ Cantor(a) marcado(a) como já cantou!');
-        } catch (error) {
-            console.error('Erro ao marcar:', error);
-            showToast('⚠️ Erro ao atualizar. Tente novamente.');
         }
-    }
 
-    // ===== REMOVER =====
-    async function removeSinger(id) {
-        if (!confirm('Tem certeza que deseja remover este cantor da fila?')) return;
-
-        try {
-            await db.collection(COLLECTION).doc(id).delete();
-            showToast('✕ Cantor(a) removido(a) da fila');
-        } catch (error) {
-            console.error('Erro ao remover:', error);
-            showToast('⚠️ Erro ao remover. Tente novamente.');
+        // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
+        function listenQueue() {
+            db.collection(COLLECTION)
+                .orderBy('createdAt', 'asc')
+                .onSnapshot((snapshot) => {
+                    const singers = [];
+                    snapshot.forEach((doc) => {
+                        singers.push({ id: doc.id, ...doc.data() });
+                    });
+                    render(singers);
+                    setStatus(true);
+                }, (error) => {
+                    console.error('Erro no Firestore:', error);
+                    setStatus(false);
+                });
         }
-    }
 
-    // ===== INICIA =====
-    listenQueue();
-    atualizarDisponibilidadeUI();
-    setInterval(atualizarDisponibilidadeUI, 30000);
-</script>
+        // ===== MARCAR COMO JÁ CANTOU =====
+        async function markDone(id) {
+            try {
+                await db.collection(COLLECTION).doc(id).update({ done: true });
+                showToast('✅ Cantor(a) marcado(a) como já cantou!');
+            } catch (error) {
+                console.error('Erro ao marcar:', error);
+                showToast('⚠️ Erro ao atualizar. Tente novamente.');
+            }
+        }
 
+        // ===== REMOVER =====
+        async function removeSinger(id) {
+            if (!confirm('Tem certeza que deseja remover este cantor da fila?')) return;
+            try {
+                await db.collection(COLLECTION).doc(id).delete();
+                showToast('✕ Cantor(a) removido(a) da fila');
+            } catch (error) {
+                console.error('Erro ao remover:', error);
+                showToast('⚠️ Erro ao remover. Tente novamente.');
+            }
+        }
+
+        // ===== INICIA =====
+        // listenQueue() e atualizarDisponibilidadeUI() foram movidos para o
+        // onAuthStateChanged — só rodam com o usuário autenticado.
+    </script>
 </body>
 </html>
