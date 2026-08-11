@@ -4,11 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Fila de Cantores</title>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
-    </script>
+    <!-- Firebase SDKs — ORDEM CORRETA: app primeiro, depois auth e firestore -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -68,6 +67,19 @@
         }
         .avail-pill.open { background: rgba(70, 200, 70, 0.14); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.25); }
         .avail-pill.closed { background: rgba(255, 70, 70, 0.14); color: #ff6b6b; border: 1px solid rgba(255, 70, 70, 0.25); }
+        /* ===== BOTÃO SAIR ===== */
+        .btn-sair {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #ccc;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: background 0.2s, color 0.2s;
+        }
+        .btn-sair:hover { background: rgba(255, 70, 70, 0.15); color: #ff6b6b; }
         /* ===== OVERLAY DE EVENTO ENCERRADO ===== */
         .closed-overlay {
             position: fixed;
@@ -137,6 +149,18 @@
             font-style: italic;
             padding: 10px 0;
         }
+        /* ===== APOIO (NOW PLAYING) ===== */
+        .apoio-line {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffd200;
+            background: rgba(247, 151, 30, 0.12);
+            border: 1px solid rgba(247, 151, 30, 0.3);
+        }
         /* ===== QUEUE ===== */
         .queue-container {
             flex: 1;
@@ -194,6 +218,18 @@
         .item-name { font-size: 1.3rem; font-weight: 600; }
         .item-music { font-size: 1rem; color: #bbb; margin-top: 2px; }
         .item-artist { font-size: 0.85rem; color: #888; font-style: italic; }
+        /* ===== APOIO (ITEM DA FILA) ===== */
+        .item-apoio {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #ffd200;
+            background: rgba(247, 151, 30, 0.12);
+            border: 1px solid rgba(247, 151, 30, 0.25);
+        }
         .item-actions {
             display: flex;
             gap: 6px;
@@ -215,6 +251,22 @@
         .btn:active { transform: scale(0.97); }
         .btn-success { background: rgba(70, 200, 70, 0.18); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.3); }
         .btn-link { background: rgba(70, 130, 255, 0.18); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.3); }
+        /* ===== PROTEÇÃO: OVERLAY DE VERIFICAÇÃO ===== */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            color: #aaa;
+            font-size: 1rem;
+            text-align: center;
+            padding: 20px;
+            z-index: 1000;
+        }
         /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
             .display-header h1 { font-size: 1.8rem; }
@@ -270,6 +322,9 @@
     </style>
 </head>
 <body>
+    <!-- Overlay: cobre a página enquanto a sessão é verificada -->
+    <div id="overlay">🔒 Verificando acesso...</div>
+
     <!-- OVERLAY: EVENTO ENCERRADO -->
     <div class="closed-overlay" id="closedOverlay">
         <div class="icon">🎤</div>
@@ -285,6 +340,7 @@
             <span class="status-dot" id="statusDot"></span>
             <span class="conn-text" id="statusText">Conectando...</span>
             <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
+            <button type="button" class="btn-sair" id="btnSair">🚪 Sair</button>
         </div>
     </div>
     <!-- NOW PLAYING -->
@@ -322,6 +378,56 @@
     const db = firebase.firestore();
     const COLLECTION = 'karaoke_fila';
     const CONFIG_PATH = 'config/disponibilidade';
+
+    // ============================================================
+    // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE A PÁGINA PARA USUÁRIOS LOGADOS
+    // ============================================================
+    const overlay = document.getElementById('overlay');
+
+    function liberarPagina() {
+        overlay.style.display = 'none';
+        listenQueue();
+        atualizarDisponibilidade();
+        setInterval(atualizarDisponibilidade, 30000);
+    }
+
+    // Timer de segurança: se o auth não responder em 8s, não deixa a página travada
+    const timerSeguranca = setTimeout(() => {
+        overlay.innerHTML =
+            '⚠️ Não foi possível verificar o acesso automaticamente.<br><br>' +
+            '<a href="admin.html" style="color:#ffd200;font-weight:600;text-decoration:none;">' +
+            'Ir para o login →</a>';
+    }, 8000);
+
+    if (typeof firebase.auth === 'function') {
+        firebase.auth().onAuthStateChanged(user => {
+            clearTimeout(timerSeguranca);
+            if (!user) {
+                // Não está logado → vai para a tela de login
+                window.location.href = 'admin.html';
+                return;
+            }
+            // Está logado → libera a página e inicia o app
+            liberarPagina();
+        });
+    } else {
+        clearTimeout(timerSeguranca);
+        overlay.innerHTML =
+            '⚠️ Erro: Firebase Auth não carregou.<br>' +
+            '<span style="font-size:0.85rem;color:#888;">Verifique a ordem dos SDKs (app deve vir primeiro).</span>';
+        console.error('firebase.auth não está disponível. Confira a ordem dos scripts do Firebase.');
+    }
+
+    // Botão Sair
+    const btnSair = document.getElementById('btnSair');
+    if (btnSair) {
+        btnSair.addEventListener('click', () => {
+            firebase.auth().signOut().then(() => {
+                window.location.href = 'admin.html';
+            });
+        });
+    }
+
     // ===== DOM =====
     const nowContent    = document.getElementById('nowContent');
     const queueList     = document.getElementById('queueList');
@@ -351,6 +457,21 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+    // ===== APOIO PARA CANTAR (campo salvo pelo inclusao.html) =====
+    // No Firestore o campo é "apoioCantar" (boolean true/false).
+    function getApoio(s) {
+        if (!s) return null;
+        if (typeof s.apoioCantar === 'boolean') {
+            return s.apoioCantar ? 'Com apoio para cantar' : null;
+        }
+        if (typeof s.apoioCantar === 'string') {
+            const t = s.apoioCantar.trim().toLowerCase();
+            return (t && t !== 'false' && t !== '0' && t !== 'nao' && t !== 'não' && t !== 'no' && t !== 'sem')
+                ? 'Com apoio para cantar'
+                : null;
+        }
+        return null;
     }
     // ===== DATAS E HORAS (horário local) =====
     function formatDate(d) {
@@ -427,16 +548,20 @@
         const currentSinger = singers.filter(s => s.done).pop() || null;
         const nextUp   = pending.length > 0 ? pending[0] : null;
         if (currentSinger) {
+            const apoio = getApoio(currentSinger);
             nowContent.innerHTML = `
                 <div class="singer">${esc(currentSinger.nome)}</div>
                 <div class="music">🎵 ${esc(currentSinger.musica)}</div>
                 <div class="artist">🎤 ${esc(currentSinger.artista || 'Artista')}</div>
+                ${apoio ? `<div class="apoio-line">🤝 ${esc(apoio)}</div>` : ''}
             `;
         } else if (nextUp) {
+            const apoio = getApoio(nextUp);
             nowContent.innerHTML = `
                 <div class="singer">${esc(nextUp.nome)}</div>
                 <div class="music">🎵 ${esc(nextUp.musica)}</div>
                 <div class="artist">🎤 ${esc(nextUp.artista || 'Artista')}</div>
+                ${apoio ? `<div class="apoio-line">🤝 ${esc(apoio)}</div>` : ''}
                 <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
             `;
         } else {
@@ -454,6 +579,7 @@
             const linkHtml = s.link
                 ? `<a href="${esc(s.link)}" target="_blank" rel="noopener" class="btn btn-link">🔗 Ouvir</a>`
                 : '';
+            const apoio = getApoio(s);
             return `
                 <div class="queue-item">
                     <div class="item-pos">${pos}</div>
@@ -461,6 +587,7 @@
                         <div class="item-name">${esc(s.nome)}</div>
                         <div class="item-music">🎵 ${esc(s.musica)}</div>
                         <div class="item-artist">🎤 ${esc(s.artista || 'Artista')}</div>
+                        ${apoio ? `<div class="item-apoio">🤝 ${esc(apoio)}</div>` : ''}
                     </div>
                     <div class="item-actions">
                         ${linkHtml}
@@ -498,9 +625,8 @@
             });
     }
     // ===== INICIA =====
-    listenQueue();
-    atualizarDisponibilidade();
-    setInterval(atualizarDisponibilidade, 30000);
+    // listenQueue() e atualizarDisponibilidade() são chamados pelo
+    // onAuthStateChanged (função liberarPagina) apenas com sessão ativa.
 </script>
 </body>
 </html>
