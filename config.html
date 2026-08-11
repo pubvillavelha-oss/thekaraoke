@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Configuração</title>
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -19,8 +18,7 @@
             padding: 20px;
         }
         .container { max-width: 640px; margin: 0 auto; }
-
-        header { text-align: center; padding: 30px 0 20px; }
+        header { text-align: center; padding: 30px 0 20px; position: relative; }
         header h1 {
             font-size: 2rem;
             background: linear-gradient(90deg, #f7971e, #ffd200);
@@ -29,7 +27,6 @@
             background-clip: text;
         }
         header p { color: #aaa; margin-top: 6px; font-size: 0.9rem; }
-
         .card {
             background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(12px);
@@ -43,7 +40,6 @@
             margin-bottom: 16px;
             color: #fff;
         }
-
         /* ===== STATUS / PREVIEW ===== */
         .status-box {
             display: flex;
@@ -66,7 +62,6 @@
         }
         .status-dot.online { background: #4ade80; }
         .status-dot.offline { background: #f87171; }
-
         .preview-summary {
             font-size: 0.85rem;
             color: #bbb;
@@ -80,7 +75,6 @@
             border-radius: 20px;
             margin: 2px 2px 0 0;
         }
-
         /* ===== SWITCH ===== */
         .switch-row {
             display: flex;
@@ -124,7 +118,6 @@
         .switch input:checked + .slider::before { transform: translateX(24px); }
         .switch-label strong { font-size: 0.95rem; }
         .switch-label .hint { font-size: 0.8rem; color: #888; margin-top: 2px; }
-
         /* ===== FORM ===== */
         .form-grid {
             display: grid;
@@ -157,7 +150,6 @@
             box-shadow: 0 0 0 3px rgba(247, 151, 30, 0.2);
         }
         input::placeholder { color: #777; }
-
         .btn {
             width: 100%;
             padding: 14px;
@@ -173,7 +165,6 @@
         .btn:hover { transform: scale(1.01); }
         .btn:active { transform: scale(0.98); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
         .note {
             margin-top: 14px;
             font-size: 0.78rem;
@@ -185,9 +176,7 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
         .note strong { color: #bbb; }
-
         footer { text-align: center; padding: 20px 0 10px; color: #555; font-size: 0.8rem; }
-
         .toast {
             position: fixed;
             bottom: 30px;
@@ -206,299 +195,324 @@
             white-space: nowrap;
         }
         .toast.show { opacity: 1; bottom: 50px; }
-
+        /* ===== PROTEÇÃO: OVERLAY DE VERIFICAÇÃO ===== */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #aaa;
+            font-size: 1rem;
+            z-index: 1000;
+        }
+        /* ===== PROTEÇÃO: BOTÃO SAIR ===== */
+        .btn-sair {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 8px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #ccc;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-sair:hover { background: rgba(255, 70, 70, 0.15); color: #ff6b6b; }
         @media (max-width: 600px) {
             .form-grid { grid-template-columns: 1fr; }
             .toast { white-space: normal; width: 90%; text-align: center; }
+            .btn-sair { position: static; margin-top: 14px; }
         }
     </style>
 </head>
 <body>
+    <!-- Overlay: cobre a página enquanto a sessão é verificada -->
+    <div id="overlay">🔒 Verificando acesso...</div>
 
-<div class="container">
-
-    <header>
-        <h1>⚙️ Configuração do Karaokê</h1>
-        <p>Defina quando a fila fica disponível e o limite diário de músicas</p>
-    </header>
-
-    <!-- SITUAÇÃO ATUAL -->
-    <div class="card">
-        <h2>📊 Situação atual</h2>
-        <div class="status-box closed" id="statusBar">
-            <span class="status-dot offline" id="statusDot"></span>
-            <span id="statusText">Verificando...</span>
+    <div class="container">
+        <header>
+            <h1>⚙️ Configuração do Karaokê</h1>
+            <p>Defina quando a fila fica disponível e o limite diário de músicas</p>
+            <button type="button" class="btn-sair" id="btnSair">Sair</button>
+        </header>
+        <!-- SITUAÇÃO ATUAL -->
+        <div class="card">
+            <h2>📊 Situação atual</h2>
+            <div class="status-box closed" id="statusBar">
+                <span class="status-dot offline" id="statusDot"></span>
+                <span id="statusText">Verificando...</span>
+            </div>
+            <div class="preview-summary" id="previewBox">Carregando configuração...</div>
         </div>
-        <div class="preview-summary" id="previewBox">Carregando configuração...</div>
+        <!-- FORMULÁRIO -->
+        <form id="configForm">
+            <div class="card">
+                <h2>📅 Disponibilidade do evento</h2>
+                <div class="switch-row">
+                    <label class="switch">
+                        <input type="checkbox" id="ativo" checked />
+                        <span class="slider"></span>
+                    </label>
+                    <div class="switch-label">
+                        <strong>Sistema ativo</strong>
+                        <div class="hint">Desative para fechar a fila imediatamente</div>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div>
+                        <label for="dataInicio">Data de abertura do evento</label>
+                        <input type="date" id="dataInicio" />
+                    </div>
+                    <div>
+                        <label for="dataFim">Data de fechamento do evento</label>
+                        <input type="date" id="dataFim" />
+                    </div>
+                    <div>
+                        <label for="horarioInicio">Horário de início</label>
+                        <input type="time" id="horarioInicio" />
+                    </div>
+                    <div>
+                        <label for="horarioFim">Horário de término</label>
+                        <input type="time" id="horarioFim" />
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>🎵 Limite diário de músicas</h2>
+                <div>
+                    <label for="limiteDiario">Quantas músicas podem ser cadastradas por dia</label>
+                    <input type="number" id="limiteDiario" min="1" max="500" value="60" />
+                </div>
+                <div class="note">
+                    Este valor substitui o limite fixo do código. As telas de cadastro e inclusão passam a usar
+                    o número salvo aqui, sem precisar alterar nada no código.
+                </div>
+            </div>
+            <button type="submit" class="btn">💾 Salvar configuração</button>
+        </form>
+        <footer>As telas de cadastro, inclusão e apresentação leem esta configuração automaticamente</footer>
     </div>
+    <div class="toast" id="toast"></div>
 
-    <!-- FORMULÁRIO -->
-    <form id="configForm">
+    <script>
+        // ============================================================
+        // 🔥 CONFIGURAÇÃO DO FIREBASE
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+            authDomain: "karaokevvp.firebaseapp.com",
+            projectId: "karaokevvp",
+            storageBucket: "karaokevvp.firebasestorage.app",
+            messagingSenderId: "938258818805",
+            appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+        };
+        // ===== INICIALIZA FIREBASE =====
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        <div class="card">
-            <h2>📅 Disponibilidade do evento</h2>
+        // ============================================================
+        // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE O PAINEL PARA USUÁRIOS LOGADOS
+        // ============================================================
+        const auth = firebase.auth();
+        const overlay = document.getElementById('overlay');
 
-            <div class="switch-row">
-                <label class="switch">
-                    <input type="checkbox" id="ativo" checked />
-                    <span class="slider"></span>
-                </label>
-                <div class="switch-label">
-                    <strong>Sistema ativo</strong>
-                    <div class="hint">Desative para fechar a fila imediatamente</div>
-                </div>
-            </div>
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                // Não está logado → vai para a tela de login
+                window.location.href = 'admin.html';
+                return;
+            }
+            // Está logado → libera o painel e carrega a configuração
+            overlay.style.display = 'none';
+            carregarConfig();
+        });
 
-            <div class="form-grid">
-                <div>
-                    <label for="dataInicio">Data de abertura do evento</label>
-                    <input type="date" id="dataInicio" />
-                </div>
-                <div>
-                    <label for="dataFim">Data de fechamento do evento</label>
-                    <input type="date" id="dataFim" />
-                </div>
-                <div>
-                    <label for="horarioInicio">Horário de início</label>
-                    <input type="time" id="horarioInicio" />
-                </div>
-                <div>
-                    <label for="horarioFim">Horário de término</label>
-                    <input type="time" id="horarioFim" />
-                </div>
-            </div>
-        </div>
+        // Botão Sair
+        document.getElementById('btnSair').addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'admin.html';
+            });
+        });
 
-        <div class="card">
-            <h2>🎵 Limite diário de músicas</h2>
-            <div>
-                <label for="limiteDiario">Quantas músicas podem ser cadastradas por dia</label>
-                <input type="number" id="limiteDiario" min="1" max="500" value="60" />
-            </div>
-            <div class="note">
-                Este valor substitui o limite fixo do código. As telas de cadastro e inclusão passam a usar
-                o número salvo aqui, sem precisar alterar nada no código.
-            </div>
-        </div>
+        // ===== DOM =====
+        const form            = document.getElementById('configForm');
+        const chkAtivo        = document.getElementById('ativo');
+        const inpDataInicio   = document.getElementById('dataInicio');
+        const inpDataFim      = document.getElementById('dataFim');
+        const inpHorarioInicio = document.getElementById('horarioInicio');
+        const inpHorarioFim   = document.getElementById('horarioFim');
+        const inpLimite       = document.getElementById('limiteDiario');
+        const statusBar       = document.getElementById('statusBar');
+        const statusDot       = document.getElementById('statusDot');
+        const statusText      = document.getElementById('statusText');
+        const previewBox      = document.getElementById('previewBox');
+        let toastTimer = null;
 
-        <button type="submit" class="btn">💾 Salvar configuração</button>
-    </form>
-
-    <footer>As telas de cadastro, inclusão e apresentação leem esta configuração automaticamente</footer>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-    // ============================================================
-    // 🔥 CONFIGURAÇÃO DO FIREBASE
-    // ============================================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
-        authDomain: "karaokevvp.firebaseapp.com",
-        projectId: "karaokevvp",
-        storageBucket: "karaokevvp.firebasestorage.app",
-        messagingSenderId: "938258818805",
-        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
-    };
-
-    // ===== INICIALIZA FIREBASE =====
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // ===== DOM =====
-    const form            = document.getElementById('configForm');
-    const chkAtivo        = document.getElementById('ativo');
-    const inpDataInicio   = document.getElementById('dataInicio');
-    const inpDataFim      = document.getElementById('dataFim');
-    const inpHorarioInicio = document.getElementById('horarioInicio');
-    const inpHorarioFim   = document.getElementById('horarioFim');
-    const inpLimite       = document.getElementById('limiteDiario');
-    const statusBar       = document.getElementById('statusBar');
-    const statusDot       = document.getElementById('statusDot');
-    const statusText      = document.getElementById('statusText');
-    const previewBox      = document.getElementById('previewBox');
-
-    let toastTimer = null;
-    function showToast(msg) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-    }
-
-    // ===== DATAS E HORAS (horário local do dispositivo) =====
-    function formatDate(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dia = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dia}`;
-    }
-    function formatTime(d) {
-        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    }
-
-    // ===== VERIFICA SE AGORA ESTÁ DENTRO DA JANELA (recebe a config) =====
-    function verificarDisponibilidade(cfg) {
-        if (cfg.ativo === false) {
-            return { aberto: false, msg: 'Sistema desativado pelo organizador.' };
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
         }
 
-        const dataInicio = cfg.dataInicio || '';
-        const dataFim = cfg.dataFim || '';
-        const horarioInicio = cfg.horarioInicio || '';
-        const horarioFim = cfg.horarioFim || '';
-
-        if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) {
-            return { aberto: true, msg: 'Sem datas configuradas — fila aberta.' };
+        // ===== DATAS E HORAS (horário local do dispositivo) =====
+        function formatDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dia}`;
+        }
+        function formatTime(d) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
         }
 
-        const now = new Date();
-        const hoje = formatDate(now);
-        const agora = formatTime(now);
-
-        // Fora do intervalo de datas
-        if (hoje < dataInicio || hoje > dataFim) {
-            return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
-        }
-
-        const cruzaMeiaNoite = horarioFim < horarioInicio;
-
-        // Mesmo dia
-        if (dataInicio === dataFim) {
-            const dentro = agora >= horarioInicio && agora <= horarioFim;
+        // ===== VERIFICA SE AGORA ESTÁ DENTRO DA JANELA (recebe a config) =====
+        function verificarDisponibilidade(cfg) {
+            if (cfg.ativo === false) {
+                return { aberto: false, msg: 'Sistema desativado pelo organizador.' };
+            }
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) {
+                return { aberto: true, msg: 'Sem datas configuradas — fila aberta.' };
+            }
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+            // Fora do intervalo de datas
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+            // Mesmo dia
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+            // Primeiro dia: abre a partir do horário de início
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            // Último dia: fecha após o horário de término
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            // Dias intermediários: seguem a janela de horário
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
             return dentro
                 ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
-                : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
         }
 
-        // Primeiro dia: abre a partir do horário de início
-        if (hoje === dataInicio) {
-            if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
-            return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
-        }
-
-        // Último dia: fecha após o horário de término
-        if (hoje === dataFim) {
-            if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
-            return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
-        }
-
-        // Dias intermediários: seguem a janela de horário
-        const dentro = cruzaMeiaNoite
-            ? (agora >= horarioInicio || agora <= horarioFim)
-            : (agora >= horarioInicio && agora <= horarioFim);
-        return dentro
-            ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
-            : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
-    }
-
-    // ===== ATUALIZA O PREVIEW COM OS VALORES ATUAIS DO FORMULÁRIO =====
-    function atualizarPreview() {
-        const cfg = {
-            ativo: chkAtivo.checked,
-            dataInicio: inpDataInicio.value,
-            dataFim: inpDataFim.value,
-            horarioInicio: inpHorarioInicio.value,
-            horarioFim: inpHorarioFim.value
-        };
-
-        const res = verificarDisponibilidade(cfg);
-
-        statusBar.className = 'status-box ' + (res.aberto ? 'open' : 'closed');
-        statusDot.className = 'status-dot ' + (res.aberto ? 'online' : 'offline');
-        statusText.textContent = res.aberto ? '🟢 Fila aberta' : '🔴 Fila fechada';
-
-        // Resumo
-        const fmt = d => d.split('-').reverse().join('/');
-        const limite = parseInt(inpLimite.value, 10) || 60;
-
-        if (!chkAtivo.checked) {
-            previewBox.innerHTML = `<span class="tag">Sistema desativado</span> — a fila está fechada para todos.`;
-            return;
-        }
-        if (!inpDataInicio.value || !inpDataFim.value || !inpHorarioInicio.value || !inpHorarioFim.value) {
-            previewBox.innerHTML = `Preencha datas e horários do evento para ativar o controle de disponibilidade.`;
-            return;
-        }
-
-        previewBox.innerHTML =
-            `<span class="tag">📅 ${fmt(inpDataInicio.value)} a ${fmt(inpDataFim.value)}</span>` +
-            `<span class="tag">🕐 ${inpHorarioInicio.value} às ${inpHorarioFim.value}</span>` +
-            `<span class="tag">🎵 Limite: ${limite} músicas/dia</span><br/>` +
-            `<span style="color:#999;">${res.msg}</span>`;
-    }
-
-    // ===== CARREGA A CONFIGURAÇÃO SALVA =====
-    async function carregarConfig() {
-        try {
-            const doc = await db.collection('config').doc('disponibilidade').get();
-            if (doc.exists) {
-                const c = doc.data();
-                chkAtivo.checked = c.ativo !== false;
-                inpDataInicio.value = c.dataInicio || '';
-                inpDataFim.value = c.dataFim || '';
-                inpHorarioInicio.value = c.horarioInicio || '';
-                inpHorarioFim.value = c.horarioFim || '';
-                inpLimite.value = c.limiteDiario || 60;
-            }
-            atualizarPreview();
-        } catch (error) {
-            console.error('Erro ao carregar:', error);
-            previewBox.textContent = 'Não foi possível carregar a configuração. Verifique a conexão.';
-        }
-    }
-
-    // ===== SALVAR =====
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        if (!inpDataInicio.value || !inpDataFim.value || !inpHorarioInicio.value || !inpHorarioFim.value) {
-            showToast('⚠️ Preencha datas e horários do evento.');
-            return;
-        }
-        if (inpDataFim.value < inpDataInicio.value) {
-            showToast('⚠️ A data de fechamento não pode ser anterior à de abertura.');
-            return;
-        }
-        const limite = parseInt(inpLimite.value, 10);
-        if (!limite || limite < 1) {
-            showToast('⚠️ Informe um limite diário válido (mínimo 1).');
-            return;
-        }
-
-        const btn = form.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = '⏳ Salvando...';
-
-        try {
-            await db.collection('config').doc('disponibilidade').set({
+        // ===== ATUALIZA O PREVIEW COM OS VALORES ATUAIS DO FORMULÁRIO =====
+        function atualizarPreview() {
+            const cfg = {
                 ativo: chkAtivo.checked,
                 dataInicio: inpDataInicio.value,
                 dataFim: inpDataFim.value,
                 horarioInicio: inpHorarioInicio.value,
-                horarioFim: inpHorarioFim.value,
-                limiteDiario: limite
-            });
-            atualizarPreview();
-            showToast('✅ Configuração salva! As outras telas já estão usando.');
-        } catch (error) {
-            console.error('Erro ao salvar:', error);
-            showToast('⚠️ Erro ao salvar. Verifique a conexão.');
+                horarioFim: inpHorarioFim.value
+            };
+            const res = verificarDisponibilidade(cfg);
+            statusBar.className = 'status-box ' + (res.aberto ? 'open' : 'closed');
+            statusDot.className = 'status-dot ' + (res.aberto ? 'online' : 'offline');
+            statusText.textContent = res.aberto ? '🟢 Fila aberta' : '🔴 Fila fechada';
+            // Resumo
+            const fmt = d => d.split('-').reverse().join('/');
+            const limite = parseInt(inpLimite.value, 10) || 60;
+            if (!chkAtivo.checked) {
+                previewBox.innerHTML = `<span class="tag">Sistema desativado</span> — a fila está fechada para todos.`;
+                return;
+            }
+            if (!inpDataInicio.value || !inpDataFim.value || !inpHorarioInicio.value || !inpHorarioFim.value) {
+                previewBox.innerHTML = `Preencha datas e horários do evento para ativar o controle de disponibilidade.`;
+                return;
+            }
+            previewBox.innerHTML =
+                `<span class="tag">📅 ${fmt(inpDataInicio.value)} a ${fmt(inpDataFim.value)}</span>` +
+                `<span class="tag">🕐 ${inpHorarioInicio.value} às ${inpHorarioFim.value}</span>` +
+                `<span class="tag">🎵 Limite: ${limite} músicas/dia</span><br/>` +
+                `<span style="color:#999;">${res.msg}</span>`;
         }
 
-        btn.disabled = false;
-        btn.textContent = '💾 Salvar configuração';
-    });
+        // ===== CARREGA A CONFIGURAÇÃO SALVA =====
+        async function carregarConfig() {
+            try {
+                const doc = await db.collection('config').doc('disponibilidade').get();
+                if (doc.exists) {
+                    const c = doc.data();
+                    chkAtivo.checked = c.ativo !== false;
+                    inpDataInicio.value = c.dataInicio || '';
+                    inpDataFim.value = c.dataFim || '';
+                    inpHorarioInicio.value = c.horarioInicio || '';
+                    inpHorarioFim.value = c.horarioFim || '';
+                    inpLimite.value = c.limiteDiario || 60;
+                }
+                atualizarPreview();
+            } catch (error) {
+                console.error('Erro ao carregar:', error);
+                previewBox.textContent = 'Não foi possível carregar a configuração. Verifique a conexão.';
+            }
+        }
 
-    // ===== PREVIEW AO VIVO =====
-    form.addEventListener('input', atualizarPreview);
-    form.addEventListener('change', atualizarPreview);
+        // ===== SALVAR =====
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!inpDataInicio.value || !inpDataFim.value || !inpHorarioInicio.value || !inpHorarioFim.value) {
+                showToast('⚠️ Preencha datas e horários do evento.');
+                return;
+            }
+            if (inpDataFim.value < inpDataInicio.value) {
+                showToast('⚠️ A data de fechamento não pode ser anterior à de abertura.');
+                return;
+            }
+            const limite = parseInt(inpLimite.value, 10);
+            if (!limite || limite < 1) {
+                showToast('⚠️ Informe um limite diário válido (mínimo 1).');
+                return;
+            }
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = '⏳ Salvando...';
+            try {
+                await db.collection('config').doc('disponibilidade').set({
+                    ativo: chkAtivo.checked,
+                    dataInicio: inpDataInicio.value,
+                    dataFim: inpDataFim.value,
+                    horarioInicio: inpHorarioInicio.value,
+                    horarioFim: inpHorarioFim.value,
+                    limiteDiario: limite
+                });
+                atualizarPreview();
+                showToast('✅ Configuração salva! As outras telas já estão usando.');
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                showToast('⚠️ Erro ao salvar. Verifique a conexão.');
+            }
+            btn.disabled = false;
+            btn.textContent = '💾 Salvar configuração';
+        });
 
-    // ===== INICIA =====
-    carregarConfig();
-</script>
-
+        // ===== PREVIEW AO VIVO =====
+        form.addEventListener('input', atualizarPreview);
+        form.addEventListener('change', atualizarPreview);
+        // ===== INICIA =====
+        // carregarConfig() foi REMOVIDO daqui — agora é chamado pelo onAuthStateChanged
+        // apenas quando o usuário está autenticado.
+    </script>
 </body>
 </html>
