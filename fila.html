@@ -380,8 +380,11 @@
     const CONFIG_PATH = 'config/disponibilidade';
 
     // ============================================================
-    // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE A PÁGINA PARA USUÁRIOS LOGADOS
+    // 🔐 PROTEÇÃO DE ACESSO — LOGIN + PERMISSÃO POR PÁGINA
     // ============================================================
+    // Página que ESTE arquivo representa. Troque aqui em cada arquivo.
+    const PAGINA_ATUAL = 'fila.html';
+
     const overlay = document.getElementById('overlay');
 
     function liberarPagina() {
@@ -407,8 +410,22 @@
                 window.location.href = 'admin.html';
                 return;
             }
-            // Está logado → libera a página e inicia o app
-            liberarPagina();
+            // ===== NOVO: verifica se o usuário pode acessar ESTA página =====
+            db.collection('permissoes').doc(user.uid).get()
+                .then(doc => {
+                    const permitidas = doc.exists ? (doc.data().paginas || []) : [];
+                    if (!permitidas.includes(PAGINA_ATUAL)) {
+                        // Sem permissão → volta para o login
+                        window.location.href = 'admin.html';
+                        return;
+                    }
+                    // Tem permissão → libera a página
+                    liberarPagina();
+                })
+                .catch(() => {
+                    // Se der erro, bloqueia por segurança
+                    window.location.href = 'admin.html';
+                });
         });
     } else {
         clearTimeout(timerSeguranca);
@@ -626,7 +643,7 @@
     }
     // ===== INICIA =====
     // listenQueue() e atualizarDisponibilidade() são chamados pelo
-    // onAuthStateChanged (função liberarPagina) apenas com sessão ativa.
+    // fluxo de permissão (liberarPagina) apenas com sessão ativa + página liberada.
 </script>
 </body>
 </html>
