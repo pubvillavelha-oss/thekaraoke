@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Login</title>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #e0e0e0;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            width: 340px;
+        }
+        h1 {
+            font-size: 1.4rem;
+            margin-bottom: 24px;
+            text-align: center;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: 4px; }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+        input:focus { outline: none; border-color: #f7971e; }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            color: #1a1a2e;
+        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .erro { color: #ff6b6b; font-size: 0.85rem; margin-top: 12px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔐 Acesso Restrito</h1>
+        <form id="loginForm">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" required />
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" required />
+            <button type="submit" id="btnLogin">Entrar</button>
+        </form>
+        <p class="erro" id="erro"></p>
+    </div>
+
+    <script>
+        // 🔥 MESMA CONFIGURAÇÃO DO SEU config.html
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+            authDomain: "karaokevvp.firebaseapp.com",
+            projectId: "karaokevvp",
+            storageBucket: "karaokevvp.firebasestorage.app",
+            messagingSenderId: "938258818805",
+            appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Se já estiver logado, vai direto para o config
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                window.location.href = 'config.html';
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const btn = document.getElementById('btnLogin');
+            const erro = document.getElementById('erro');
+            btn.disabled = true;
+            erro.textContent = '';
+            try {
+                await auth.signInWithEmailAndPassword(email, senha);
+                // onAuthStateChanged cuida do redirecionamento
+            } catch (err) {
+                erro.textContent = 'E-mail ou senha inválidos.';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
