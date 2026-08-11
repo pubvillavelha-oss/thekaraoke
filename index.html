@@ -4,13 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Fila de Cantores</title>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
-    </script>
+    <!-- Firebase SDKs — ORDEM CORRETA: app primeiro, depois auth e firestore -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -181,10 +178,14 @@
             inset: 0;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 12px;
             color: #aaa;
             font-size: 1rem;
+            text-align: center;
+            padding: 20px;
             z-index: 1000;
         }
         @media (max-width: 600px) {
@@ -275,28 +276,51 @@
         // ============================================================
         // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE A PÁGINA PARA USUÁRIOS LOGADOS
         // ============================================================
-        const auth = firebase.auth();
         const overlay = document.getElementById('overlay');
 
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // Não está logado → vai para a tela de login
-                window.location.href = 'admin.html';
-                return;
-            }
-            // Está logado → libera a página e inicia o app
+        function liberarPagina() {
             overlay.style.display = 'none';
             listenQueue();
             atualizarDisponibilidadeUI();
             setInterval(atualizarDisponibilidadeUI, 30000);
-        });
+        }
+
+        // Timer de segurança: se o auth não responder em 8s, não deixa a página travada
+        const timerSeguranca = setTimeout(() => {
+            overlay.innerHTML =
+                '⚠️ Não foi possível verificar o acesso automaticamente.<br><br>' +
+                '<a href="admin.html" style="color:#ffd200;font-weight:600;text-decoration:none;">' +
+                'Ir para o login →</a>';
+        }, 8000);
+
+        if (typeof firebase.auth === 'function') {
+            firebase.auth().onAuthStateChanged(user => {
+                clearTimeout(timerSeguranca);
+                if (!user) {
+                    // Não está logado → vai para a tela de login
+                    window.location.href = 'admin.html';
+                    return;
+                }
+                // Está logado → libera a página e inicia o app
+                liberarPagina();
+            });
+        } else {
+            clearTimeout(timerSeguranca);
+            overlay.innerHTML =
+                '⚠️ Erro: Firebase Auth não carregou.<br>' +
+                '<span style="font-size:0.85rem;color:#888;">Verifique a ordem dos SDKs (app deve vir primeiro).</span>';
+            console.error('firebase.auth não está disponível. Confira a ordem dos scripts do Firebase.');
+        }
 
         // Botão Sair
-        document.getElementById('btnSair').addEventListener('click', () => {
-            auth.signOut().then(() => {
-                window.location.href = 'admin.html';
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', () => {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'admin.html';
+                });
             });
-        });
+        }
 
         // ===== DOM =====
         const queueList     = document.getElementById('queueList');
@@ -501,8 +525,8 @@
         }
 
         // ===== INICIA =====
-        // listenQueue() e atualizarDisponibilidadeUI() foram movidos para o
-        // onAuthStateChanged — só rodam com o usuário autenticado.
+        // listenQueue() e atualizarDisponibilidadeUI() são chamados pelo
+        // onAuthStateChanged (função liberarPagina) apenas com sessão ativa.
     </script>
 </body>
 </html>
