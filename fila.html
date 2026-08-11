@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Karaokê - Fila de Cantores</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100vh;
+        }
+        /* ===== HEADER ===== */
+        .display-header {
+            text-align: center;
+            padding: 20px 20px 10px;
+            flex-shrink: 0;
+        }
+        .display-header h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+        .display-header .sub {
+            color: #888;
+            font-size: 1rem;
+            margin-top: 4px;
+        }
+        /* ===== STATUS ===== */
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+        .conn-text { font-size: 0.8rem; color: #888; }
+        .avail-pill {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .avail-pill.open { background: rgba(70, 200, 70, 0.14); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.25); }
+        .avail-pill.closed { background: rgba(255, 70, 70, 0.14); color: #ff6b6b; border: 1px solid rgba(255, 70, 70, 0.25); }
+        /* ===== OVERLAY DE EVENTO ENCERRADO ===== */
+        .closed-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 100;
+            padding: 20px;
+        }
+        .closed-overlay.show { display: flex; }
+        .closed-overlay .icon { font-size: 5rem; }
+        .closed-overlay .title {
+            font-size: 2.2rem;
+            color: #ff6b6b;
+            font-weight: 800;
+            margin-top: 20px;
+        }
+        .closed-overlay .sub {
+            font-size: 1.1rem;
+            color: #999;
+            margin-top: 12px;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        .closed-overlay .hint {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 24px;
+        }
+        /* ===== NOW PLAYING ===== */
+        .now-playing {
+            text-align: center;
+            padding: 16px 20px 20px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .now-playing .label {
+            font-size: 0.85rem;
+            color: #f7971e;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+        .now-playing .singer {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-top: 4px;
+            color: #fff;
+        }
+        .now-playing .music {
+            font-size: 1.3rem;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        .now-playing .artist {
+            font-size: 1rem;
+            color: #999;
+            font-style: italic;
+        }
+        .now-playing .empty-now {
+            font-size: 1.6rem;
+            color: #555;
+            font-style: italic;
+            padding: 10px 0;
+        }
+        /* ===== QUEUE ===== */
+        .queue-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px 20px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+        .queue-container::-webkit-scrollbar { width: 6px; }
+        .queue-container::-webkit-scrollbar-track { background: transparent; }
+        .queue-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 8px; }
+        .queue-title {
+            font-size: 1.1rem;
+            color: #aaa;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .queue-title .count {
+            background: rgba(247, 151, 30, 0.2);
+            color: #ffd200;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .empty-queue {
+            text-align: center;
+            color: #555;
+            font-size: 1.2rem;
+            font-style: italic;
+            padding: 40px 0;
+        }
+        /* ===== QUEUE ITEMS ===== */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: background 0.2s;
+        }
+        .queue-item:hover { background: rgba(255, 255, 255, 0.07); }
+        .item-pos {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #f7971e;
+            min-width: 48px;
+            text-align: center;
+        }
+        .item-info { flex: 1; min-width: 0; }
+        .item-name { font-size: 1.3rem; font-weight: 600; }
+        .item-music { font-size: 1rem; color: #bbb; margin-top: 2px; }
+        .item-artist { font-size: 0.85rem; color: #888; font-style: italic; }
+        .item-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .btn:active { transform: scale(0.97); }
+        .btn-success { background: rgba(70, 200, 70, 0.18); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.3); }
+        .btn-link { background: rgba(70, 130, 255, 0.18); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.3); }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .display-header h1 { font-size: 1.8rem; }
+            .now-playing .singer { font-size: 1.6rem; }
+            .now-playing .music { font-size: 1rem; }
+            .item-pos { font-size: 1.2rem; min-width: 36px; }
+            .item-name { font-size: 1rem; }
+            .item-music { font-size: 0.85rem; }
+            .closed-overlay .title { font-size: 1.5rem; }
+            .closed-overlay .icon { font-size: 3.5rem; }
+            .queue-item { flex-wrap: wrap; }
+            .item-actions { width: 100%; justify-content: flex-end; }
+        }
+        /* ===== FULLSCREEN TV MODE ===== */
+        @media (min-width: 1024px) {
+            .display-header h1 { font-size: 3.2rem; }
+            .now-playing .singer { font-size: 3rem; }
+            .now-playing .music { font-size: 1.6rem; }
+            .item-pos { font-size: 2rem; min-width: 60px; }
+            .item-name { font-size: 1.6rem; }
+            .item-music { font-size: 1.2rem; }
+            .item-artist { font-size: 1rem; }
+            .closed-overlay .title { font-size: 3rem; }
+            .closed-overlay .sub { font-size: 1.3rem; }
+        }
+        /* ===== ANIMATION ===== */
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .queue-item { animation: fadeSlide 0.3s ease-out; }
+        .now-playing { animation: fadeSlide 0.4s ease-out; }
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.4s, bottom 0.4s;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            max-width: 90%;
+        }
+        .toast.show { opacity: 1; bottom: 50px; }
+    </style>
+</head>
+<body>
+    <!-- OVERLAY: EVENTO ENCERRADO -->
+    <div class="closed-overlay" id="closedOverlay">
+        <div class="icon">🎤</div>
+        <div class="title">Evento encerrado</div>
+        <div class="sub" id="closedMsg">A fila do karaokê abre apenas durante o evento. Volte em breve!</div>
+        <div class="hint" id="closedHint">Este painel se atualiza automaticamente quando a fila reabrir</div>
+    </div>
+    <!-- HEADER -->
+    <div class="display-header">
+        <h1>🎤 Fila do Karaokê - Cante no Villa</h1>
+        <div class="sub">Gerencie a fila de cantores</div>
+        <div class="status-row">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="conn-text" id="statusText">Conectando...</span>
+            <span class="avail-pill closed" id="availPill">Verificando disponibilidade...</span>
+        </div>
+    </div>
+    <!-- NOW PLAYING -->
+    <div class="now-playing" id="nowPlaying">
+        <div class="label">🔴 Cantando agora</div>
+        <div id="nowContent">
+            <div class="empty-now">Aguardando próximo cantor...</div>
+        </div>
+    </div>
+    <!-- QUEUE -->
+    <div class="queue-container" id="queueContainer">
+        <div class="queue-title">
+            <span>📋 Próximos da fila</span>
+            <span class="count" id="queueCount">0</span>
+        </div>
+        <div id="queueList">
+            <div class="empty-queue">Carregando...</div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+<script>
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE (mesmo dos outros arquivos)
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
+    // ===== INICIALIZA FIREBASE =====
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const COLLECTION = 'karaoke_fila';
+    const CONFIG_PATH = 'config/disponibilidade';
+    // ===== DOM =====
+    const nowContent    = document.getElementById('nowContent');
+    const queueList     = document.getElementById('queueList');
+    const queueCount    = document.getElementById('queueCount');
+    const statusDot     = document.getElementById('statusDot');
+    const statusText    = document.getElementById('statusText');
+    const availPill     = document.getElementById('availPill');
+    const closedOverlay = document.getElementById('closedOverlay');
+    const closedMsg     = document.getElementById('closedMsg');
+    let filaAberta = true;
+    let toastTimer = null;
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+    // ===== STATUS DE CONEXÃO =====
+    function setStatus(online) {
+        statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+        statusText.textContent = online ? 'Online' : 'Offline';
+    }
+    // ===== ESCAPE =====
+    function esc(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    // ===== DATAS E HORAS (horário local) =====
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dia}`;
+    }
+    function formatTime(d) {
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    // ===== VERIFICA DISPONIBILIDADE (datas + horários) =====
+    async function verificarDisponibilidade() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (!doc.exists) return { aberto: true, msg: '' };
+            const cfg = doc.data();
+            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
+            return dentro
+                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+        } catch {
+            return { aberto: true, msg: '' };
+        }
+    }
+    // ===== ATUALIZA O ESTADO ABERTO/FECHADO =====
+    async function atualizarDisponibilidade() {
+        const res = await verificarDisponibilidade();
+        filaAberta = res.aberto;
+        if (res.aberto) {
+            availPill.className = 'avail-pill open';
+            availPill.textContent = '🟢 ' + (res.msg || 'Fila aberta');
+            closedOverlay.classList.remove('show');
+        } else {
+            availPill.className = 'avail-pill closed';
+            availPill.textContent = '🔴 Fila fechada';
+            closedMsg.textContent = res.msg || 'A fila do karaokê abre apenas durante o evento. Volte em breve!';
+            closedOverlay.classList.add('show');
+        }
+    }
+    // ===== RENDER =====
+    function render(singers) {
+        const pending = singers.filter(s => !s.done);
+        // --- NOW PLAYING (mostra o cantor atual no palco) ---
+        const currentSinger = singers.filter(s => s.done).pop() || null;
+        const nextUp   = pending.length > 0 ? pending[0] : null;
+        if (currentSinger) {
+            nowContent.innerHTML = `
+                <div class="singer">${esc(currentSinger.nome)}</div>
+                <div class="music">🎵 ${esc(currentSinger.musica)}</div>
+                <div class="artist">🎤 ${esc(currentSinger.artista || 'Artista')}</div>
+            `;
+        } else if (nextUp) {
+            nowContent.innerHTML = `
+                <div class="singer">${esc(nextUp.nome)}</div>
+                <div class="music">🎵 ${esc(nextUp.musica)}</div>
+                <div class="artist">🎤 ${esc(nextUp.artista || 'Artista')}</div>
+                <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
+            `;
+        } else {
+            nowContent.innerHTML = `<div class="empty-now">Aguardando próximo cantor...</div>`;
+        }
+        // --- QUEUE (apenas quem ainda NÃO está no palco) ---
+        const showPending = currentSinger ? pending : (pending.length > 1 ? pending.slice(1) : []);
+        if (showPending.length === 0) {
+            queueList.innerHTML = `<div class="empty-queue">Fila vazia — seja o próximo! 🎤</div>`;
+            queueCount.textContent = String(pending.length);
+            return;
+        }
+        queueList.innerHTML = showPending.map((s, idx) => {
+            const pos = currentSinger ? idx + 1 : idx + 2;
+            const linkHtml = s.link
+                ? `<a href="${esc(s.link)}" target="_blank" rel="noopener" class="btn btn-link">🔗 Ouvir</a>`
+                : '';
+            return `
+                <div class="queue-item">
+                    <div class="item-pos">${pos}</div>
+                    <div class="item-info">
+                        <div class="item-name">${esc(s.nome)}</div>
+                        <div class="item-music">🎵 ${esc(s.musica)}</div>
+                        <div class="item-artist">🎤 ${esc(s.artista || 'Artista')}</div>
+                    </div>
+                    <div class="item-actions">
+                        ${linkHtml}
+                        <button class="btn btn-success" onclick="markDone('${s.id}')">✔ No Palco</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        queueCount.textContent = String(pending.length);
+    }
+    // ===== MARCAR COMO JÁ CANTOU =====
+    async function markDone(id) {
+        try {
+            await db.collection(COLLECTION).doc(id).update({ done: true });
+            showToast('✅ Cantor(a) já cantou!');
+        } catch (error) {
+            console.error('Erro ao marcar:', error);
+            showToast('⚠️ Erro ao atualizar. Tente novamente.');
+        }
+    }
+    // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
+    function listenQueue() {
+        db.collection(COLLECTION)
+            .orderBy('createdAt', 'asc')
+            .onSnapshot((snapshot) => {
+                const singers = [];
+                snapshot.forEach((doc) => {
+                    singers.push({ id: doc.id, ...doc.data() });
+                });
+                render(singers);
+                setStatus(true);
+            }, (error) => {
+                console.error('Erro no Firestore:', error);
+                setStatus(false);
+            });
+    }
+    // ===== INICIA =====
+    listenQueue();
+    atualizarDisponibilidade();
+    setInterval(atualizarDisponibilidade, 30000);
+</script>
+</body>
+</html>
