@@ -411,7 +411,7 @@
                 return;
             }
             // ===== NOVO: verifica se o usuário pode acessar ESTA página =====
-            db.collection('permissoes').doc(user.uid).get()
+            db.collection('permissao').doc(user.uid).get()
                 .then(doc => {
                     const permitidas = doc.exists ? (doc.data().paginas || []) : [];
                     if (!permitidas.includes(PAGINA_ATUAL)) {
