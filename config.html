@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Configuração</title>
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs — ORDEM CORRETA: app primeiro, depois auth e firestore -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -90,11 +90,7 @@
             height: 28px;
             flex-shrink: 0;
         }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+        .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
             position: absolute;
             cursor: pointer;
@@ -201,10 +197,14 @@
             inset: 0;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 12px;
             color: #aaa;
             font-size: 1rem;
+            text-align: center;
+            padding: 20px;
             z-index: 1000;
         }
         /* ===== PROTEÇÃO: BOTÃO SAIR ===== */
@@ -316,28 +316,85 @@
         const db = firebase.firestore();
 
         // ============================================================
-        // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE O PAINEL PARA USUÁRIOS LOGADOS
+        // 🔐 PROTEÇÃO DE ACESSO — LOGIN + PERMISSÃO POR PÁGINA (ANTI-LOOP)
         // ============================================================
-        const auth = firebase.auth();
+        // Página que ESTE arquivo representa.
+        const PAGINA_ATUAL = 'config.html';
+
         const overlay = document.getElementById('overlay');
 
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // Não está logado → vai para a tela de login
-                window.location.href = 'admin.html';
-                return;
-            }
-            // Está logado → libera o painel e carrega a configuração
+        // Timer de segurança: se o auth não responder em 8s, não deixa a página travada
+        const timerSeguranca = setTimeout(() => {
+            overlay.innerHTML =
+                '⚠️ Não foi possível verificar o acesso automaticamente.<br><br>' +
+                '<a href="admin.html" style="color:#ffd200;font-weight:600;text-decoration:none;">' +
+                'Ir para o login →</a>';
+        }, 8000);
+
+        // Mostra "Acesso negado" DENTRO da página (sem redirecionar → quebra o loop)
+        function mostrarSemPermissao() {
+            clearTimeout(timerSeguranca);
+            overlay.innerHTML =
+                '<div style="text-align:center;max-width:340px;">' +
+                '<div style="font-size:3rem;">🚫</div>' +
+                '<p style="margin-top:12px;font-weight:700;color:#ff6b6b;font-size:1.1rem;">Acesso negado</p>' +
+                '<p style="margin-top:6px;font-size:0.9rem;color:#aaa;">Seu usuário não tem permissão para abrir esta página.</p>' +
+                '<button type="button" id="btnSemPermissao" style="margin-top:18px;padding:12px 24px;border:none;border-radius:10px;font-size:0.95rem;font-weight:600;cursor:pointer;background:linear-gradient(90deg,#f7971e,#ffd200);color:#1a1a2e;">Voltar ao login</button>' +
+                '</div>';
+            document.getElementById('btnSemPermissao').addEventListener('click', () => {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'admin.html';
+                });
+            });
+        }
+
+        function liberarPagina() {
             overlay.style.display = 'none';
             carregarConfig();
-        });
+        }
+
+        if (typeof firebase.auth === 'function') {
+            firebase.auth().onAuthStateChanged(user => {
+                clearTimeout(timerSeguranca);
+                if (!user) {
+                    // Não está logado → vai para a tela de login
+                    window.location.href = 'admin.html';
+                    return;
+                }
+                // Verifica se o usuário pode acessar ESTA página
+                db.collection('permissoes').doc(user.uid).get()
+                    .then(doc => {
+                        const permitidas = doc.exists ? (doc.data().paginas || []) : [];
+                        if (!permitidas.includes(PAGINA_ATUAL)) {
+                            // Sem permissão → mostra aviso, NÃO redireciona (anti-loop)
+                            mostrarSemPermissao();
+                            return;
+                        }
+                        // Tem permissão → libera a página
+                        liberarPagina();
+                    })
+                    .catch(() => {
+                        // Se der erro, bloqueia por segurança (sem loop)
+                        mostrarSemPermissao();
+                    });
+            });
+        } else {
+            clearTimeout(timerSeguranca);
+            overlay.innerHTML =
+                '⚠️ Erro: Firebase Auth não carregou.<br>' +
+                '<span style="font-size:0.85rem;color:#888;">Verifique a ordem dos SDKs (app deve vir primeiro).</span>';
+            console.error('firebase.auth não está disponível. Confira a ordem dos scripts do Firebase.');
+        }
 
         // Botão Sair
-        document.getElementById('btnSair').addEventListener('click', () => {
-            auth.signOut().then(() => {
-                window.location.href = 'admin.html';
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', () => {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'admin.html';
+                });
             });
-        });
+        }
 
         // ===== DOM =====
         const form            = document.getElementById('configForm');
@@ -511,8 +568,8 @@
         form.addEventListener('input', atualizarPreview);
         form.addEventListener('change', atualizarPreview);
         // ===== INICIA =====
-        // carregarConfig() foi REMOVIDO daqui — agora é chamado pelo onAuthStateChanged
-        // apenas quando o usuário está autenticado.
+        // carregarConfig() é chamado pela função liberarPagina,
+        // apenas com sessão ativa + permissão para esta página.
     </script>
 </body>
 </html>
