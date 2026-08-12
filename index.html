@@ -224,9 +224,7 @@
             <p>Gerenciamento da fila de cantores</p>
             <div class="header-actions">
                 <a href="apresentacao.html" target="_blank" rel="noopener" class="btn-header blue">📺 Apresentação</a>
-                <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>             
-                <a href="fila.html" target="_blank" rel="noopener" class="btn-header gray">🚶 Fila</a>
-                <a href="dashboard.html" target="_blank" rel="noopener" class="btn-header gray">📊 Dashboard</a>
+                <a href="inclusao.html" target="_blank" rel="noopener" class="btn-header orange">➕ Inclusão</a>
                 <a href="config.html" target="_blank" rel="noopener" class="btn-header gray">⚙️ Configuração</a>
                 <button type="button" class="btn-header gray" id="btnSair">🚪 Sair</button>
             </div>
@@ -276,16 +274,12 @@
         const CONFIG_PATH = 'config/disponibilidade';
 
         // ============================================================
-        // 🔐 PROTEÇÃO DE ACESSO — SÓ EXIBE A PÁGINA PARA USUÁRIOS LOGADOS
+        // 🔐 PROTEÇÃO DE ACESSO — LOGIN + PERMISSÃO POR PÁGINA (ANTI-LOOP)
         // ============================================================
-        const overlay = document.getElementById('overlay');
+        // Página que ESTE arquivo representa.
+        const PAGINA_ATUAL = 'index.html';
 
-        function liberarPagina() {
-            overlay.style.display = 'none';
-            listenQueue();
-            atualizarDisponibilidadeUI();
-            setInterval(atualizarDisponibilidadeUI, 30000);
-        }
+        const overlay = document.getElementById('overlay');
 
         // Timer de segurança: se o auth não responder em 8s, não deixa a página travada
         const timerSeguranca = setTimeout(() => {
@@ -295,6 +289,30 @@
                 'Ir para o login →</a>';
         }, 8000);
 
+        // Mostra "Acesso negado" DENTRO da página (sem redirecionar → quebra o loop)
+        function mostrarSemPermissao() {
+            clearTimeout(timerSeguranca);
+            overlay.innerHTML =
+                '<div style="text-align:center;max-width:340px;">' +
+                '<div style="font-size:3rem;">🚫</div>' +
+                '<p style="margin-top:12px;font-weight:700;color:#ff6b6b;font-size:1.1rem;">Acesso negado</p>' +
+                '<p style="margin-top:6px;font-size:0.9rem;color:#aaa;">Seu usuário não tem permissão para abrir esta página.</p>' +
+                '<button type="button" id="btnSemPermissao" style="margin-top:18px;padding:12px 24px;border:none;border-radius:10px;font-size:0.95rem;font-weight:600;cursor:pointer;background:linear-gradient(90deg,#f7971e,#ffd200);color:#1a1a2e;">Voltar ao login</button>' +
+                '</div>';
+            document.getElementById('btnSemPermissao').addEventListener('click', () => {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'admin.html';
+                });
+            });
+        }
+
+        function liberarPagina() {
+            overlay.style.display = 'none';
+            listenQueue();
+            atualizarDisponibilidadeUI();
+            setInterval(atualizarDisponibilidadeUI, 30000);
+        }
+
         if (typeof firebase.auth === 'function') {
             firebase.auth().onAuthStateChanged(user => {
                 clearTimeout(timerSeguranca);
@@ -303,8 +321,22 @@
                     window.location.href = 'admin.html';
                     return;
                 }
-                // Está logado → libera a página e inicia o app
-                liberarPagina();
+                // Verifica se o usuário pode acessar ESTA página
+                db.collection('permissoes').doc(user.uid).get()
+                    .then(doc => {
+                        const permitidas = doc.exists ? (doc.data().paginas || []) : [];
+                        if (!permitidas.includes(PAGINA_ATUAL)) {
+                            // Sem permissão → mostra aviso, NÃO redireciona (anti-loop)
+                            mostrarSemPermissao();
+                            return;
+                        }
+                        // Tem permissão → libera a página
+                        liberarPagina();
+                    })
+                    .catch(() => {
+                        // Se der erro, bloqueia por segurança (sem loop)
+                        mostrarSemPermissao();
+                    });
             });
         } else {
             clearTimeout(timerSeguranca);
@@ -528,7 +560,7 @@
 
         // ===== INICIA =====
         // listenQueue() e atualizarDisponibilidadeUI() são chamados pelo
-        // onAuthStateChanged (função liberarPagina) apenas com sessão ativa.
+        // fluxo de permissão (liberarPagina) apenas com sessão ativa + página liberada.
     </script>
 </body>
 </html>
