@@ -113,19 +113,35 @@
         const loading = document.getElementById('loading');
         const erro = document.getElementById('erro');
 
-        // ===== REDIRECIONA SÓ PARA PÁGINAS QUE O USUÁRIO TEM PERMISSÃO =====
+        // ============================================================
+        // NORMALIZA O CAMPO "paginas" — aceita array OU texto
+        // Remove aspas, espaços e vírgulas, e só aceita nomes .html
+        // ============================================================
+        function normalizarPaginas(valor) {
+            let lista = [];
+            if (Array.isArray(valor)) {
+                lista = valor;
+            } else if (typeof valor === 'string' && valor.trim()) {
+                lista = valor.split(',');
+            } else {
+                return [];
+            }
+            return lista
+                .map(v => String(v).trim().replace(/^["'\s]+|["'\s]+$/g, ''))
+                .filter(v => /^[\w.-]+\.html$/.test(v));
+        }
+
+        // ===== REDIRECIONA SÓ PARA PÁGINAS VÁLIDAS E PERMITIDAS =====
         async function redirecionarParaPagina(user) {
             loading.style.display = 'block';
             try {
                 const doc = await db.collection('permissoes').doc(user.uid).get();
-                const paginas = doc.exists && Array.isArray(doc.data().paginas)
-                    ? doc.data().paginas
-                    : [];
+                const paginas = doc.exists ? normalizarPaginas(doc.data().paginas) : [];
                 if (paginas.length > 0) {
-                    window.location.href = paginas[0]; // primeira página permitida
+                    window.location.href = paginas[0]; // primeira página válida
                     return;
                 }
-                // Sem permissão → mostra aviso e NÃO redireciona (quebra o loop)
+                // Sem página válida → mostra aviso e NÃO redireciona (anti-loop)
                 loading.style.display = 'none';
                 loginForm.style.display = 'none';
                 semAcesso.style.display = 'block';
