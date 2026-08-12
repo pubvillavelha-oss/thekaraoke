@@ -26,17 +26,17 @@
             border-radius: 16px;
             padding: 40px;
             width: 340px;
+            text-align: center;
         }
         h1 {
             font-size: 1.4rem;
             margin-bottom: 24px;
-            text-align: center;
             background: linear-gradient(90deg, #f7971e, #ffd200);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: 4px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: 4px; text-align: left; }
         input {
             width: 100%;
             padding: 12px 14px;
@@ -47,6 +47,7 @@
             color: #fff;
             font-size: 0.95rem;
             box-sizing: border-box;
+            text-align: left;
         }
         input:focus { outline: none; border-color: #f7971e; }
         button {
@@ -61,13 +62,19 @@
             color: #1a1a2e;
         }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .erro { color: #ff6b6b; font-size: 0.85rem; margin-top: 12px; text-align: center; }
-        .loading { text-align: center; color: #aaa; font-size: 0.9rem; margin-top: 12px; }
+        .erro { color: #ff6b6b; font-size: 0.85rem; margin-top: 12px; }
+        .loading { color: #aaa; font-size: 0.9rem; margin-top: 12px; }
+        .sem-acesso { margin-top: 16px; }
+        .sem-acesso .icone { font-size: 3rem; }
+        .sem-acesso p { color: #ff6b6b; font-size: 0.9rem; margin-top: 8px; line-height: 1.4; }
+        .sem-acesso button { margin-top: 16px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>🔐 Acesso Restrito</h1>
+
+        <!-- FORMULÁRIO DE LOGIN -->
         <form id="loginForm">
             <label for="email">E-mail</label>
             <input type="email" id="email" required />
@@ -75,8 +82,16 @@
             <input type="password" id="senha" required />
             <button type="submit" id="btnLogin">Entrar</button>
         </form>
+
         <p class="erro" id="erro"></p>
         <p class="loading" id="loading" style="display:none;">Verificando acesso...</p>
+
+        <!-- AVISO: USUÁRIO SEM PERMISSÃO (para o loop aqui) -->
+        <div class="sem-acesso" id="semAcesso" style="display:none;">
+            <div class="icone">🚫</div>
+            <p>Seu usuário não tem acesso a nenhuma página.<br/>Procure o administrador.</p>
+            <button type="button" id="btnVoltar">Voltar ao login</button>
+        </div>
     </div>
 
     <script>
@@ -93,45 +108,69 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Página padrão se o usuário não tiver permissões registradas
-        const PAGINA_PADRAO = 'fila.html';
+        const semAcesso = document.getElementById('semAcesso');
+        const loginForm = document.getElementById('loginForm');
+        const loading = document.getElementById('loading');
+        const erro = document.getElementById('erro');
 
-        // ===== REDIRECIONA PARA A PRIMEIRA PÁGINA PERMITIDA =====
+        // ===== REDIRECIONA SÓ PARA PÁGINAS QUE O USUÁRIO TEM PERMISSÃO =====
         async function redirecionarParaPagina(user) {
+            loading.style.display = 'block';
             try {
                 const doc = await db.collection('permissoes').doc(user.uid).get();
-                const paginas = doc.exists ? (doc.data().paginas || []) : [];
-                window.location.href = (paginas.length > 0) ? paginas[0] : PAGINA_PADRAO;
-            } catch {
-                window.location.href = PAGINA_PADRAO;
+                const paginas = doc.exists && Array.isArray(doc.data().paginas)
+                    ? doc.data().paginas
+                    : [];
+                if (paginas.length > 0) {
+                    window.location.href = paginas[0]; // primeira página permitida
+                    return;
+                }
+                // Sem permissão → mostra aviso e NÃO redireciona (quebra o loop)
+                loading.style.display = 'none';
+                loginForm.style.display = 'none';
+                semAcesso.style.display = 'block';
+            } catch (err) {
+                console.error('Erro ao ler permissões:', err);
+                loading.style.display = 'none';
+                loginForm.style.display = 'none';
+                semAcesso.style.display = 'block';
             }
         }
 
-        // Se já estiver logado, vai direto para a página permitida
+        // Se já estiver logado, tenta acessar a página permitida
         auth.onAuthStateChanged(user => {
             if (user) {
                 redirecionarParaPagina(user);
+            } else {
+                loading.style.display = 'none';
+                semAcesso.style.display = 'none';
+                loginForm.style.display = 'block';
             }
         });
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        // Login
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
             const btn = document.getElementById('btnLogin');
-            const erro = document.getElementById('erro');
-            const loading = document.getElementById('loading');
             btn.disabled = true;
             erro.textContent = '';
             loading.style.display = 'block';
             try {
-                await auth.signInWithEmailAndPassword(email, senha);
+                await auth.signInWithEmailAndPassword(
+                    document.getElementById('email').value,
+                    document.getElementById('senha').value
+                );
                 // onAuthStateChanged cuida do redirecionamento
             } catch (err) {
                 erro.textContent = 'E-mail ou senha inválidos.';
                 btn.disabled = false;
                 loading.style.display = 'none';
             }
+        });
+
+        // Botão "Voltar ao login" (faz logout e mostra o formulário)
+        document.getElementById('btnVoltar').addEventListener('click', () => {
+            auth.signOut();
         });
     </script>
 </body>
