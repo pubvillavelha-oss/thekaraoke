@@ -251,35 +251,45 @@
         .btn:active { transform: scale(0.97); }
         .btn-success { background: rgba(70, 200, 70, 0.18); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.3); }
         .btn-link { background: rgba(70, 130, 255, 0.18); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.3); }
-
-        /* ===== NOVO: BARRA DE CHAMADA DO CANTOR ===== */
-        .call-bar {
+        /* ===== NOVO: BOTÃO CHAMAR CANTOR (dentro do item) ===== */
+        .btn-call-item {
+            background: rgba(247, 151, 30, 0.18);
+            color: #ffd200;
+            border: 1px solid rgba(247, 151, 30, 0.35);
+        }
+        /* ===== NOVO: CONTROLES INFERIORES (texto + voz) ===== */
+        .controles {
             flex-shrink: 0;
             padding: 12px 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.02);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             flex-wrap: wrap;
-            background: rgba(255, 255, 255, 0.02);
         }
-        .btn-call {
+        .texto-chamada {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             flex: 1;
             min-width: 200px;
-            padding: 16px;
-            border: none;
-            border-radius: 14px;
-            background: linear-gradient(90deg, #f7971e, #ffd200);
-            color: #1a1a2e;
-            font-size: 1.3rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: transform 0.15s, opacity 0.2s;
-            letter-spacing: 0.5px;
         }
-        .btn-call:hover { transform: scale(1.02); opacity: 0.92; }
-        .btn-call:active { transform: scale(0.98); }
-        .btn-call:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; opacity: 1; }
+        .texto-chamada label {
+            font-size: 0.85rem;
+            color: #aaa;
+            white-space: nowrap;
+        }
+        .texto-chamada input {
+            flex: 1;
+            min-width: 150px;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1a1a2e;
+        }
         .voz-control {
             display: flex;
             align-items: center;
@@ -298,36 +308,6 @@
             background: rgba(255, 255, 255, 0.9);
             color: #1a1a2e;
             max-width: 220px;
-        }
-        /* ===== NOVO: CAMPO DE TEXTO DA CHAMADA ===== */
-        .texto-chamada {
-            flex-shrink: 0;
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .texto-chamada label {
-            font-size: 0.85rem;
-            color: #aaa;
-            white-space: nowrap;
-        }
-        .texto-chamada input {
-            flex: 1;
-            min-width: 200px;
-            padding: 10px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            background: rgba(255, 255, 255, 0.9);
-            color: #1a1a2e;
-        }
-        .texto-chamada .dica {
-            font-size: 0.75rem;
-            color: #888;
-            width: 100%;
         }
         /* ===== PROTEÇÃO: OVERLAY DE VERIFICAÇÃO ===== */
         #overlay {
@@ -357,7 +337,7 @@
             .closed-overlay .icon { font-size: 3.5rem; }
             .queue-item { flex-wrap: wrap; }
             .item-actions { width: 100%; justify-content: flex-end; }
-            .btn-call { font-size: 1.1rem; }
+            .controles { flex-direction: column; align-items: stretch; }
         }
         /* ===== FULLSCREEN TV MODE ===== */
         @media (min-width: 1024px) {
@@ -439,16 +419,12 @@
         </div>
     </div>
 
-    <!-- ===== NOVO: CAMPO DE TEXTO DA CHAMADA ===== -->
-    <div class="texto-chamada">
-        <label for="textoChamada">📣 Texto da chamada:</label>
-        <input type="text" id="textoChamada" value="Atenção! Agora é a vez de [nome]!" maxlength="200">
-        <div class="dica">Use <strong>[nome]</strong> para inserir o nome do cantor. Ex.: "Atenção! Agora é a vez de [nome]!"</div>
-    </div>
-
-    <!-- ===== NOVO: BARRA DE CHAMADA DO CANTOR ===== -->
-    <div class="call-bar">
-        <button class="btn-call" id="btnChamar" onclick="chamarCantor()">🎤 Chamar cantor</button>
+    <!-- ===== NOVO: CONTROLES INFERIORES (texto da chamada + voz) ===== -->
+    <div class="controles">
+        <div class="texto-chamada">
+            <label for="textoChamada">📣 Texto da chamada:</label>
+            <input type="text" id="textoChamada" value="Atenção! Agora é a vez de [nome]!" maxlength="200">
+        </div>
         <div class="voz-control">
             <label for="seletorVoz">🗣️ Voz:</label>
             <select id="seletorVoz"></select>
@@ -653,7 +629,6 @@
     // Tudo é protegido: se o navegador não tiver suporte a voz,
     // a página NUNCA fica travada por causa disso.
     const seletorVoz = document.getElementById('seletorVoz');
-    const btnChamar = document.getElementById('btnChamar');
     const textoChamada = document.getElementById('textoChamada');
     let vozEscolhida = null;
     const temVoz = typeof window.speechSynthesis !== 'undefined' && window.speechSynthesis !== null;
@@ -718,17 +693,16 @@
     }
 
     // ============================================================
-    // 🎤 NOVO: CHAMAR O CANTOR DA VEZ
+    // 🎤 NOVO: CHAMAR O CANTOR (SÓ FALA — NÃO AVANÇA A FILA)
     // ============================================================
     // Guarda a lista mais recente recebida do Firestore
     let ultimosCantores = [];
 
-    // Chama o próximo cantor: fala o nome e marca como "no palco"
-    function chamarCantor() {
-        const proximo = ultimosCantores.find(s => !s.done);
-        if (!proximo) {
-            showToast('🎤 Fila vazia!');
-            falar('A fila está vazia.');
+    // Chama o cantor pelo id: fala o nome, MAS NÃO marca como "no palco"
+    function chamarCantor(id) {
+        const cantor = ultimosCantores.find(s => s.id === id);
+        if (!cantor) {
+            showToast('⚠️ Cantor não encontrado.');
             return;
         }
         // Monta o texto da chamada usando o campo personalizado
@@ -736,13 +710,11 @@
         if (!texto) {
             texto = 'Atenção! Agora é a vez de [nome]!';
         }
-        // Substitui [nome] pelo nome do cantor
-        texto = texto.replace(/\[nome\]/gi, proximo.nome);
+        // Concatena o texto com o nome do cantor (substitui [nome])
+        texto = texto.replace(/\[nome\]/gi, cantor.nome);
         // Fala o texto personalizado
         falar(texto);
-        // Marca como "no palco" (done = true)
-        markDone(proximo.id);
-        showToast('🎤 Chamando ' + proximo.nome + ' para o palco!');
+        showToast('🎤 Chamando ' + cantor.nome + ' para o palco!');
     }
 
     // ===== RENDER =====
@@ -798,6 +770,7 @@
                     </div>
                     <div class="item-actions">
                         ${linkHtml}
+                        <button class="btn btn-call-item" onclick="chamarCantor('${s.id}')">🎤 Chamar cantor</button>
                         <button class="btn btn-success" onclick="markDone('${s.id}')">✔ No Palco</button>
                     </div>
                 </div>
