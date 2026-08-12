@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin - Login</title>
+    <!-- Firebase SDKs — ORDEM CORRETA: app primeiro -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -60,6 +62,7 @@
         }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
         .erro { color: #ff6b6b; font-size: 0.85rem; margin-top: 12px; text-align: center; }
+        .loading { text-align: center; color: #aaa; font-size: 0.9rem; margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -73,10 +76,11 @@
             <button type="submit" id="btnLogin">Entrar</button>
         </form>
         <p class="erro" id="erro"></p>
+        <p class="loading" id="loading" style="display:none;">Verificando acesso...</p>
     </div>
 
     <script>
-        // 🔥 MESMA CONFIGURAÇÃO DO SEU config.html
+        // 🔥 CONFIGURAÇÃO DO FIREBASE (mesma dos outros arquivos)
         const firebaseConfig = {
             apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
             authDomain: "karaokevvp.firebaseapp.com",
@@ -87,11 +91,26 @@
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // Se já estiver logado, vai direto para o config
+        // Página padrão se o usuário não tiver permissões registradas
+        const PAGINA_PADRAO = 'fila.html';
+
+        // ===== REDIRECIONA PARA A PRIMEIRA PÁGINA PERMITIDA =====
+        async function redirecionarParaPagina(user) {
+            try {
+                const doc = await db.collection('permissoes').doc(user.uid).get();
+                const paginas = doc.exists ? (doc.data().paginas || []) : [];
+                window.location.href = (paginas.length > 0) ? paginas[0] : PAGINA_PADRAO;
+            } catch {
+                window.location.href = PAGINA_PADRAO;
+            }
+        }
+
+        // Se já estiver logado, vai direto para a página permitida
         auth.onAuthStateChanged(user => {
             if (user) {
-                window.location.href = 'config.html';
+                redirecionarParaPagina(user);
             }
         });
 
@@ -101,14 +120,17 @@
             const senha = document.getElementById('senha').value;
             const btn = document.getElementById('btnLogin');
             const erro = document.getElementById('erro');
+            const loading = document.getElementById('loading');
             btn.disabled = true;
             erro.textContent = '';
+            loading.style.display = 'block';
             try {
                 await auth.signInWithEmailAndPassword(email, senha);
                 // onAuthStateChanged cuida do redirecionamento
             } catch (err) {
                 erro.textContent = 'E-mail ou senha inválidos.';
                 btn.disabled = false;
+                loading.style.display = 'none';
             }
         });
     </script>
