@@ -418,7 +418,6 @@
             <div class="empty-queue">Carregando...</div>
         </div>
     </div>
-
     <!-- ===== NOVO: CONTROLES INFERIORES (texto da chamada + voz) ===== -->
     <div class="controles">
         <div class="texto-chamada">
@@ -430,7 +429,6 @@
             <select id="seletorVoz"></select>
         </div>
     </div>
-
     <div class="toast" id="toast"></div>
 <script>
     // ============================================================
@@ -622,7 +620,6 @@
             closedOverlay.classList.add('show');
         }
     }
-
     // ============================================================
     // 🗣️ NOVO: VOZ PARA CHAMAR O CANTOR (Web Speech API)
     // ============================================================
@@ -632,7 +629,6 @@
     const textoChamada = document.getElementById('textoChamada');
     let vozEscolhida = null;
     const temVoz = typeof window.speechSynthesis !== 'undefined' && window.speechSynthesis !== null;
-
     // Preenche o seletor com as vozes em português disponíveis
     function carregarVozes() {
         if (!temVoz) {
@@ -644,7 +640,6 @@
         const vozes = window.speechSynthesis.getVoices();
         const vozesPT = vozes.filter(v => v.lang.toLowerCase().startsWith('pt'));
         const listaVozes = vozesPT.length > 0 ? vozesPT : vozes;
-
         if (!seletorVoz) return;
         seletorVoz.innerHTML = '';
         if (listaVozes.length === 0) {
@@ -671,7 +666,6 @@
             vozEscolhida = seletorVoz.value || null;
         });
     }
-
     // Função que faz o sistema falar o texto
     function falar(texto) {
         if (!temVoz) return;
@@ -691,13 +685,11 @@
         }
         window.speechSynthesis.speak(utterance);
     }
-
     // ============================================================
     // 🎤 NOVO: CHAMAR O CANTOR (SÓ FALA — NÃO AVANÇA A FILA)
     // ============================================================
     // Guarda a lista mais recente recebida do Firestore
     let ultimosCantores = [];
-
     // Chama o cantor pelo id: fala o nome, MAS NÃO marca como "no palco"
     function chamarCantor(id) {
         const cantor = ultimosCantores.find(s => s.id === id);
@@ -716,12 +708,10 @@
         falar(texto);
         showToast('🎤 Chamando ' + cantor.nome + ' para o palco!');
     }
-
     // ===== RENDER =====
     function render(singers) {
         // Guarda a lista para o botão "Chamar cantor"
         ultimosCantores = singers;
-
         const pending = singers.filter(s => !s.done);
         // --- NOW PLAYING (mostra o cantor atual no palco) ---
         const currentSinger = singers.filter(s => s.done).pop() || null;
@@ -778,14 +768,26 @@
         }).join('');
         queueCount.textContent = String(pending.length);
     }
-    // ===== MARCAR COMO JÁ CANTOU =====
+    // ===== MARCAR COMO JÁ CANTOU (somente usuário logado) =====
     async function markDone(id) {
+        // Garante sessão ativa antes de tentar gravar no Firestore
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            showToast('⚠️ Sessão expirada. Faça login novamente.');
+            setTimeout(() => { window.location.href = 'admin.html'; }, 1500);
+            return;
+        }
         try {
             await db.collection(COLLECTION).doc(id).update({ done: true });
             showToast('✅ Cantor(a) já cantou!');
         } catch (error) {
             console.error('Erro ao marcar:', error);
-            showToast('⚠️ Erro ao atualizar. Tente novamente.');
+            // Negativa vinda das regras do Firestore → orienta o usuário
+            if (error && error.code === 'permission-denied') {
+                showToast('🔒 Sem permissão para atualizar. Verifique seu login.');
+            } else {
+                showToast('⚠️ Erro ao atualizar. Tente novamente.');
+            }
         }
     }
     // ===== ESCUTA MUDANÇAS EM TEMPO REAL =====
