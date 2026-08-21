@@ -8,7 +8,6 @@
     <!-- Firebase SDKs (Compat Mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -17,7 +16,6 @@
             --accent-light: #a78bfa;
             --gold: #fbbf24;
             --success: #22c55e;
-            --info: #3b82f6;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
@@ -114,32 +112,6 @@
         .song-details h3 { font-size: 1.2rem; margin-bottom: 4px; }
         .song-details p { color: var(--text-muted); font-size: 0.9rem; }
 
-        .admin-controls { display: none; gap: 10px; }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            font-size: 0.85rem;
-        }
-
-        .btn-palco { background: var(--info); color: white; }
-        .btn-done { background: var(--success); color: white; }
-
-        .btn-add {
-            background: var(--gold);
-            color: var(--bg-dark);
-            text-decoration: none;
-            display: inline-block;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 700;
-            margin-top: 20px;
-        }
-
         .empty-msg { text-align: center; padding: 40px; color: var(--text-muted); }
 
         .closed-overlay {
@@ -151,7 +123,6 @@
         @media (max-width: 600px) {
             header h1 { font-size: 1.8rem; }
             .queue-card { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .admin-controls { width: 100%; justify-content: space-between; }
         }
     </style>
 </head>
@@ -186,10 +157,6 @@
                 <!-- Dinâmico -->
             </div>
         </section>
-
-        <div style="text-align: center;">
-            <a href="inclusao.html" class="btn-add">➕ Entrar na fila</a>
-        </div>
     </div>
 
     <!-- MENSAGEM FECHADO -->
@@ -214,21 +181,9 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
-
-    let isOperator = false;
 
     // ============================================================
-    // 🔐 AUTENTICAÇÃO DO OPERADOR
-    // ============================================================
-    auth.onAuthStateChanged(user => {
-        isOperator = !!user;
-        console.log(isOperator ? "Operador Logado" : "Modo Visualização");
-        renderQueue();
-    });
-
-    // ============================================================
-    // 📊 LEITURA DA FILA EM TEMPO REAL
+    // 📊 LEITURA DA FILA EM TEMPO REAL (APENAS VISUALIZAÇÃO)
     // ============================================================
     let fullQueue = [];
 
@@ -248,26 +203,22 @@
         const queueList = document.getElementById('queueList');
         const queueCount = document.getElementById('queueCount');
 
+        // 1. Separa quem está no palco e os próximos
         const onStage = fullQueue.find(item => item.noPalco === true);
         const nextInLine = fullQueue.filter(item => !item.noPalco);
 
-        // Renderiza "Cantando Agora"
+        // 2. Exibe "Cantando Agora"
         if (onStage) {
             nowPlayingSection.style.display = 'block';
             currentSingerDiv.innerHTML = `
                 <h2>${onStage.nome}</h2>
                 <p>${onStage.musica} — ${onStage.artista}</p>
-                ${isOperator ? `
-                    <div class="admin-controls" style="display: flex; margin-top: 15px;">
-                        <button class="btn btn-done" onclick="marcarJaCantou('${onStage.id}')">✅ Finalizar Apresentação</button>
-                    </div>
-                ` : ''}
             `;
         } else {
             nowPlayingSection.style.display = 'none';
         }
 
-        // Renderiza lista de próximos
+        // 3. Exibe lista de próximos
         queueCount.textContent = `${nextInLine.length} na espera`;
 
         if (nextInLine.length === 0) {
@@ -281,74 +232,8 @@
                     <h3>${index + 1}. ${item.nome}</h3>
                     <p>${item.musica} (${item.artista})</p>
                 </div>
-                <div class="admin-controls" style="display: ${isOperator ? 'flex' : 'none'}">
-                    <button class="btn btn-palco" onclick="marcarNoPalco('${item.id}')">🎤 No Palco</button>
-                    <button class="btn btn-done" onclick="marcarJaCantou('${item.id}')">✅ Já Cantou</button>
-                </div>
             </div>
         `).join('');
-    }
-
-    // ============================================================
-    // 🛠️ AÇÕES DO OPERADOR
-    // ============================================================
-
-    // Marca o cantor como "No Palco" (tira qualquer outro do palco)
-    async function marcarNoPalco(docId) {
-        try {
-            const batch = db.batch();
-            const palcoAtual = fullQueue.filter(i => i.noPalco === true);
-
-            palcoAtual.forEach(p => {
-                batch.update(db.collection('karaoke_fila').doc(p.id), { noPalco: false });
-            });
-
-            batch.update(db.collection('karaoke_fila').doc(docId), { noPalco: true });
-
-            await batch.commit();
-        } catch (e) {
-            alert("Erro ao atualizar palco: " + e.message);
-        }
-    }
-
-    /**
-     * FUNÇÃO CENTRAL: marca "Já cantou" e LIBERA o dispositivo
-     * (apaga o bloqueio em dispositivos/{deviceId} para permitir novo cadastro)
-     */
-    async function marcarJaCantou(docId) {
-        if (!confirm("Confirmar que o cantor já finalizou? Isso liberará o celular dele para novo cadastro.")) return;
-
-        try {
-            // 1. Lê o registro para obter o deviceId gravado no cadastro
-            const docRef = db.collection('karaoke_fila').doc(docId);
-            const docSnap = await docRef.get();
-
-            if (!docSnap.exists) return;
-            const data = docSnap.data();
-
-            // 2. Marca como concluído na fila
-            const batch = db.batch();
-            batch.update(docRef, {
-                done: true,
-                noPalco: false,
-                finalizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 3. LIBERAÇÃO DO DISPOSITIVO (Fingerprinting)
-            // Apaga o documento de bloqueio na coleção 'dispositivos'
-            if (data.deviceId) {
-                const lockRef = db.collection('dispositivos').doc(data.deviceId);
-                batch.delete(lockRef);
-                console.log(`Dispositivo ${data.deviceId} liberado.`);
-            }
-
-            await batch.commit();
-            console.log("Apresentação finalizada com sucesso.");
-
-        } catch (e) {
-            console.error("Erro ao finalizar:", e);
-            alert("Erro ao processar finalização: " + e.message);
-        }
     }
 
     // ============================================================
