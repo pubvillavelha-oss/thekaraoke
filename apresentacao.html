@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fila do Karaokê - Ao Vivo</title>
+
+    <!-- Firebase SDKs (Compat Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --accent-purple: #8b5cf6;
+            --accent-light: #a78bfa;
+            --gold: #fbbf24;
+            --success: #22c55e;
+            --info: #3b82f6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot.online { background: var(--success); box-shadow: 0 0 10px var(--success); }
+        .dot.offline { background: #ef4444; }
+
+        .now-playing {
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid var(--accent-purple);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+        }
+
+        .now-playing::before {
+            content: "CANTANDO AGORA 🎤";
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: var(--accent-light);
+            letter-spacing: 2px;
+        }
+
+        .singer-info h2 { font-size: 2.2rem; color: #fff; margin-bottom: 5px; }
+        .singer-info p { font-size: 1.2rem; color: var(--accent-light); }
+
+        .queue-section { margin-top: 20px; }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .queue-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .queue-card:hover { background: rgba(255, 255, 255, 0.05); }
+
+        .song-details h3 { font-size: 1.2rem; margin-bottom: 4px; }
+        .song-details p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .admin-controls { display: none; gap: 10px; }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .btn-palco { background: var(--info); color: white; }
+        .btn-done { background: var(--success); color: white; }
+
+        .btn-add {
+            background: var(--gold);
+            color: var(--bg-dark);
+            text-decoration: none;
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            margin-top: 20px;
+        }
+
+        .empty-msg { text-align: center; padding: 40px; color: var(--text-muted); }
+
+        .closed-overlay {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8rem; }
+            .queue-card { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .admin-controls { width: 100%; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Fila do Karaokê Cante no Villa 🎤</h1>
+        <div class="status-bar">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Carregando...</span>
+        </div>
+    </header>
+
+    <div id="mainContent">
+        <!-- CANTANDO AGORA -->
+        <section id="nowPlayingSection" style="display: none;">
+            <div class="now-playing">
+                <div class="singer-info" id="currentSinger">
+                    <!-- Dinâmico -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PRÓXIMOS -->
+        <section class="queue-section">
+            <div class="queue-header">
+                <h2>Próximos da Fila</h2>
+                <span id="queueCount" style="color: var(--accent-light); font-weight: bold;">0 pessoas</span>
+            </div>
+            <div id="queueList">
+                <!-- Dinâmico -->
+            </div>
+        </section>
+
+        <div style="text-align: center;">
+            <a href="inclusao.html" class="btn-add">➕ Entrar na fila</a>
+        </div>
+    </div>
+
+    <!-- MENSAGEM FECHADO -->
+    <div id="closedMessage" class="closed-overlay">
+        <h2 style="font-size: 2rem; color: #ef4444;">Evento Encerrado 🛑</h2>
+        <p style="margin-top: 15px; color: var(--text-muted);">A fila está fechada no momento. Acompanhe as próximas datas!</p>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let isOperator = false;
+
+    // ============================================================
+    // 🔐 AUTENTICAÇÃO DO OPERADOR
+    // ============================================================
+    auth.onAuthStateChanged(user => {
+        isOperator = !!user;
+        console.log(isOperator ? "Operador Logado" : "Modo Visualização");
+        renderQueue();
+    });
+
+    // ============================================================
+    // 📊 LEITURA DA FILA EM TEMPO REAL
+    // ============================================================
+    let fullQueue = [];
+
+    db.collection('karaoke_fila')
+        .where('done', '==', false)
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(snapshot => {
+            fullQueue = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderQueue();
+        }, err => {
+            console.error("Erro ao ler fila:", err);
+        });
+
+    function renderQueue() {
+        const nowPlayingSection = document.getElementById('nowPlayingSection');
+        const currentSingerDiv = document.getElementById('currentSinger');
+        const queueList = document.getElementById('queueList');
+        const queueCount = document.getElementById('queueCount');
+
+        const onStage = fullQueue.find(item => item.noPalco === true);
+        const nextInLine = fullQueue.filter(item => !item.noPalco);
+
+        // Renderiza "Cantando Agora"
+        if (onStage) {
+            nowPlayingSection.style.display = 'block';
+            currentSingerDiv.innerHTML = `
+                <h2>${onStage.nome}</h2>
+                <p>${onStage.musica} — ${onStage.artista}</p>
+                ${isOperator ? `
+                    <div class="admin-controls" style="display: flex; margin-top: 15px;">
+                        <button class="btn btn-done" onclick="marcarJaCantou('${onStage.id}')">✅ Finalizar Apresentação</button>
+                    </div>
+                ` : ''}
+            `;
+        } else {
+            nowPlayingSection.style.display = 'none';
+        }
+
+        // Renderiza lista de próximos
+        queueCount.textContent = `${nextInLine.length} na espera`;
+
+        if (nextInLine.length === 0) {
+            queueList.innerHTML = '<div class="empty-msg">Ninguém na fila no momento.</div>';
+            return;
+        }
+
+        queueList.innerHTML = nextInLine.map((item, index) => `
+            <div class="queue-card">
+                <div class="song-details">
+                    <h3>${index + 1}. ${item.nome}</h3>
+                    <p>${item.musica} (${item.artista})</p>
+                </div>
+                <div class="admin-controls" style="display: ${isOperator ? 'flex' : 'none'}">
+                    <button class="btn btn-palco" onclick="marcarNoPalco('${item.id}')">🎤 No Palco</button>
+                    <button class="btn btn-done" onclick="marcarJaCantou('${item.id}')">✅ Já Cantou</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ============================================================
+    // 🛠️ AÇÕES DO OPERADOR
+    // ============================================================
+
+    // Marca o cantor como "No Palco" (tira qualquer outro do palco)
+    async function marcarNoPalco(docId) {
+        try {
+            const batch = db.batch();
+            const palcoAtual = fullQueue.filter(i => i.noPalco === true);
+
+            palcoAtual.forEach(p => {
+                batch.update(db.collection('karaoke_fila').doc(p.id), { noPalco: false });
+            });
+
+            batch.update(db.collection('karaoke_fila').doc(docId), { noPalco: true });
+
+            await batch.commit();
+        } catch (e) {
+            alert("Erro ao atualizar palco: " + e.message);
+        }
+    }
+
+    /**
+     * FUNÇÃO CENTRAL: marca "Já cantou" e LIBERA o dispositivo
+     * (apaga o bloqueio em dispositivos/{deviceId} para permitir novo cadastro)
+     */
+    async function marcarJaCantou(docId) {
+        if (!confirm("Confirmar que o cantor já finalizou? Isso liberará o celular dele para novo cadastro.")) return;
+
+        try {
+            // 1. Lê o registro para obter o deviceId gravado no cadastro
+            const docRef = db.collection('karaoke_fila').doc(docId);
+            const docSnap = await docRef.get();
+
+            if (!docSnap.exists) return;
+            const data = docSnap.data();
+
+            // 2. Marca como concluído na fila
+            const batch = db.batch();
+            batch.update(docRef, {
+                done: true,
+                noPalco: false,
+                finalizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 3. LIBERAÇÃO DO DISPOSITIVO (Fingerprinting)
+            // Apaga o documento de bloqueio na coleção 'dispositivos'
+            if (data.deviceId) {
+                const lockRef = db.collection('dispositivos').doc(data.deviceId);
+                batch.delete(lockRef);
+                console.log(`Dispositivo ${data.deviceId} liberado.`);
+            }
+
+            await batch.commit();
+            console.log("Apresentação finalizada com sucesso.");
+
+        } catch (e) {
+            console.error("Erro ao finalizar:", e);
+            alert("Erro ao processar finalização: " + e.message);
+        }
+    }
+
+    // ============================================================
+    // 🕒 VERIFICAÇÃO DE DISPONIBILIDADE EM TEMPO REAL
+    // ============================================================
+    function monitorarDisponibilidade() {
+        db.doc('config/disponibilidade').onSnapshot(doc => {
+            const data = doc.data();
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const mainContent = document.getElementById('mainContent');
+            const closedMessage = document.getElementById('closedMessage');
+
+            if (data && data.ativo === false) {
+                statusDot.className = "dot offline";
+                statusText.textContent = "Fila Encerrada";
+                mainContent.style.display = 'none';
+                closedMessage.style.display = 'block';
+            } else {
+                statusDot.className = "dot online";
+                statusText.textContent = "Fila Aberta e Sincronizada";
+                mainContent.style.display = 'block';
+                closedMessage.style.display = 'none';
+            }
+        });
+    }
+
+    // Inicialização
+    monitorarDisponibilidade();
+</script>
+</body>
+</html>
