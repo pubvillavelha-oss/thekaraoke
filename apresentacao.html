@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fila do Karaokê - Ao Vivo</title>
-
     <!-- Firebase SDKs (Compat Mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -19,9 +17,7 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
@@ -29,22 +25,18 @@
             min-height: 100vh;
             padding: 20px;
         }
-
         .container { max-width: 1000px; margin: 0 auto; }
-
         header {
             text-align: center;
             margin-bottom: 40px;
             padding: 20px;
         }
-
         header h1 {
             font-size: 2.5rem;
             color: var(--gold);
             text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
             margin-bottom: 10px;
         }
-
         .status-bar {
             display: inline-flex;
             align-items: center;
@@ -55,11 +47,29 @@
             font-size: 0.9rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
         .dot { width: 10px; height: 10px; border-radius: 50%; }
         .dot.online { background: var(--success); box-shadow: 0 0 10px var(--success); }
         .dot.offline { background: #ef4444; }
-
+        /* 🎤 BOTÃO ENTRAR NA FILA */
+        .btn-queue {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-light));
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-queue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px rgba(139, 92, 246, 0.6);
+        }
         .now-playing {
             background: rgba(139, 92, 246, 0.1);
             border: 2px solid var(--accent-purple);
@@ -70,7 +80,6 @@
             overflow: hidden;
             box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
         }
-
         .now-playing::before {
             content: "CANTANDO AGORA 🎤";
             position: absolute;
@@ -81,12 +90,9 @@
             color: var(--accent-light);
             letter-spacing: 2px;
         }
-
         .singer-info h2 { font-size: 2.2rem; color: #fff; margin-bottom: 5px; }
         .singer-info p { font-size: 1.2rem; color: var(--accent-light); }
-
         .queue-section { margin-top: 20px; }
-
         .queue-header {
             display: flex;
             justify-content: space-between;
@@ -94,7 +100,6 @@
             margin-bottom: 20px;
             padding: 0 10px;
         }
-
         .queue-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -106,20 +111,15 @@
             align-items: center;
             transition: transform 0.2s;
         }
-
         .queue-card:hover { background: rgba(255, 255, 255, 0.05); }
-
         .song-details h3 { font-size: 1.2rem; margin-bottom: 4px; }
         .song-details p { color: var(--text-muted); font-size: 0.9rem; }
-
         .empty-msg { text-align: center; padding: 40px; color: var(--text-muted); }
-
         .closed-overlay {
             display: none;
             text-align: center;
             padding: 60px 20px;
         }
-
         @media (max-width: 600px) {
             header h1 { font-size: 1.8rem; }
             .queue-card { flex-direction: column; align-items: flex-start; gap: 15px; }
@@ -127,7 +127,6 @@
     </style>
 </head>
 <body>
-
 <div class="container">
     <header>
         <h1>Fila do Karaokê Cante no Villa 🎤</h1>
@@ -135,8 +134,9 @@
             <span class="dot" id="statusDot"></span>
             <span id="statusText">Carregando...</span>
         </div>
+        <!-- 🎤 BOTÃO ENTRAR NA FILA -->
+        <a href="inclusao.html" class="btn-queue">Entrar na Fila</a>
     </header>
-
     <div id="mainContent">
         <!-- CANTANDO AGORA -->
         <section id="nowPlayingSection" style="display: none;">
@@ -146,7 +146,6 @@
                 </div>
             </div>
         </section>
-
         <!-- PRÓXIMOS -->
         <section class="queue-section">
             <div class="queue-header">
@@ -158,14 +157,12 @@
             </div>
         </section>
     </div>
-
     <!-- MENSAGEM FECHADO -->
     <div id="closedMessage" class="closed-overlay">
         <h2 style="font-size: 2rem; color: #ef4444;">Evento Encerrado 🛑</h2>
         <p style="margin-top: 15px; color: var(--text-muted);">A fila está fechada no momento. Acompanhe as próximas datas!</p>
     </div>
 </div>
-
 <script>
     // ============================================================
     // 🔥 CONFIGURAÇÃO DO FIREBASE
@@ -178,15 +175,12 @@
         messagingSenderId: "938258818805",
         appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
     // ============================================================
     // 📊 LEITURA DA FILA EM TEMPO REAL (APENAS VISUALIZAÇÃO)
     // ============================================================
     let fullQueue = [];
-
     db.collection('karaoke_fila')
         .where('done', '==', false)
         .orderBy('createdAt', 'asc')
@@ -196,17 +190,14 @@
         }, err => {
             console.error("Erro ao ler fila:", err);
         });
-
     function renderQueue() {
         const nowPlayingSection = document.getElementById('nowPlayingSection');
         const currentSingerDiv = document.getElementById('currentSinger');
         const queueList = document.getElementById('queueList');
         const queueCount = document.getElementById('queueCount');
-
         // 1. Separa quem está no palco e os próximos
         const onStage = fullQueue.find(item => item.noPalco === true);
         const nextInLine = fullQueue.filter(item => !item.noPalco);
-
         // 2. Exibe "Cantando Agora"
         if (onStage) {
             nowPlayingSection.style.display = 'block';
@@ -217,15 +208,12 @@
         } else {
             nowPlayingSection.style.display = 'none';
         }
-
         // 3. Exibe lista de próximos
         queueCount.textContent = `${nextInLine.length} na espera`;
-
         if (nextInLine.length === 0) {
             queueList.innerHTML = '<div class="empty-msg">Ninguém na fila no momento.</div>';
             return;
         }
-
         queueList.innerHTML = nextInLine.map((item, index) => `
             <div class="queue-card">
                 <div class="song-details">
@@ -235,7 +223,6 @@
             </div>
         `).join('');
     }
-
     // ============================================================
     // 🕒 VERIFICAÇÃO DE DISPONIBILIDADE EM TEMPO REAL
     // ============================================================
@@ -246,7 +233,6 @@
             const statusText = document.getElementById('statusText');
             const mainContent = document.getElementById('mainContent');
             const closedMessage = document.getElementById('closedMessage');
-
             if (data && data.ativo === false) {
                 statusDot.className = "dot offline";
                 statusText.textContent = "Fila Encerrada";
@@ -260,7 +246,6 @@
             }
         });
     }
-
     // Inicialização
     monitorarDisponibilidade();
 </script>
