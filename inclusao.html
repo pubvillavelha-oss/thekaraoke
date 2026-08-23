@@ -539,7 +539,7 @@
         // 4. Este celular já tem cadastro ativo na fila?
         const regAtivo = await getRegistroAtivoDispositivo();
         if (regAtivo) {
-            showToast('⚠️ Este celular já está na fila. Aguarde sua vez de cantar.');
+            showToast('⚠️ Você já está na fila. Aguarde sua vez de cantar.');
             return false;
         }
         // 5. Cria cadastro + bloqueio do dispositivo de forma ATÔMICA.
