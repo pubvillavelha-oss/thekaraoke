@@ -250,18 +250,18 @@
         .btn:hover { transform: scale(1.05); }
         .btn:active { transform: scale(0.97); }
         .btn-success { background: rgba(70, 200, 70, 0.18); color: #6bff6b; border: 1px solid rgba(70, 200, 70, 0.3); }
-        .btn-link { background: rgba(70, 130, 255, 0.18); color: #6ba3ff; border: 1px solid rgba(70, 130,, 0.3); }
-        /* ===== NOVO: BOTÃO CHAMAR CANTOR (dentro do item)) ===== */
+        .btn-link { background: rgba(70, 130, 255, 0.18); color: #6ba3ff; border: 1px solid rgba(70, 130, 255, 0.3); }
+        /* ===== NOVO: BOTÃO CHAMAR CANTOR (dentro do item) ===== */
         .btn-call-item {
-            background: rgba(247, 151, 30, 0..18);
+            background: rgba(247, 151, 30, 0.18);
             color: #ffd200;
             border: 1px solid rgba(247, 151, 30, 0.35);
         }
-        /* ===== NOVO: CONTROLES INFERIORES (textexto + voz) ===== */
+        /* ===== NOVO: CONTROLES INFERIORES (texto + voz) ===== */
         .controles {
             flex-shrink: 0;
             padding: 12px 20px;
-            border-top: 1px solid rgba(255, 255, 255,  ​0..08);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(255, 255, 255, 0.02);
             display: flex;
             align-items: center;
@@ -272,12 +272,12 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            flex: ;
+            flex: 1;
             min-width: 200px;
         }
         .texto-chamada label {
             font-size: 0.85rem;
-            color:: #aaa;
+            color: #aaa;
             white-space: nowrap;
         }
         .texto-chamada input {
@@ -285,12 +285,12 @@
             min-width: 150px;
             padding: 10px 12px;
             border: none;
-            border-radius:  ​8px;
+            border-radius: 8px;
             font-size: 0.9rem;
-                       background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.9);
             color: #1a1a2e;
         }
-        . .voz-control {
+        .voz-control {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -309,13 +309,12 @@
             color: #1a1a2e;
             max-width: 220px;
         }
-        /* ===== PROTEÇÃO: OVERLAY DE VERERIFICAÇÃO ===== */
+        /* ===== PROTEÇÃO: OVERLAY DE VERIFICAÇÃO ===== */
         #overlay {
             position: fixed;
             inset: 0;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             display: flex;
-;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -329,43 +328,43 @@
         /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
             .display-header h1 { font-size: 1.8rem; }
-            .now-playing .singer { font-size: 1..6rem; }
-            .now-playing .music { font-size:: 1rem; }
-            .item-pos { font-size:: 1.2rem; min-width: 36px; }
+            .now-playing .singer { font-size: 1.6rem; }
+            .now-playing .music { font-size: 1rem; }
+            .item-pos { font-size: 1.2rem; min-width: 36px; }
             .item-name { font-size: 1rem; }
             .item-music { font-size: 0.85rem; }
-            .closed-overlay .title { font-size: 1..5rem; }
-            .closed-overlay .icon { font-size-size: : 3.5rem; }
+            .closed-overlay .title { font-size: 1.5rem; }
+            .closed-overlay .icon { font-size: 3.5rem; }
             .queue-item { flex-wrap: wrap; }
-            .item-actions { width:: 100%; justify-content: flex-end; }
+            .item-actions { width: 100%; justify-content: flex-end; }
             .controles { flex-direction: column; align-items: stretch; }
         }
-        /* ===== FULLSCREEN TV MODE == == ===== */
+        /* ===== FULLSCREEN TV MODE ===== */
         @media (min-width: 1024px) {
-            .display-header h1 { font-size:  ​3..2rem; }
+            .display-header h1 { font-size: 3.2rem; }
             .now-playing .singer { font-size: 3rem; }
-            .now-playing .music { font-size:: 1.6rem; }
-            .item-pos { font-size: 2rem; min-width:: 60px; }
-            .item-name { font-size:  ​1.6rem; }
+            .now-playing .music { font-size: 1.6rem; }
+            .item-pos { font-size: 2rem; min-width: 60px; }
+            .item-name { font-size: 1.6rem; }
             .item-music { font-size: 1.2rem; }
-            .item-artist { font-size-size: : 1rem; }
-            .closed-overlay .title { font-font-size:: 3rem; }
+            .item-artist { font-size: 1rem; }
+            .closed-overlay .title { font-size: 3rem; }
             .closed-overlay .sub { font-size: 1.3rem; }
         }
-        /* ===== ANIMATION == ===== */
+        /* ===== ANIMATION ===== */
         @keyframes fadeSlide {
             from { opacity: 0; transform: translateY(-10px); }
             to   { opacity: 1; transform: translateY(0); }
         }
-        .queue-item { animation: fadeSlide 0.0.3s ease-out; }
-        .now-playing { animation: fadeSlide 0.0.4s ease-out-out; }
+        .queue-item { animation: fadeSlide 0.3s ease-out; }
+        .now-playing { animation: fadeSlide 0.4s ease-out; }
         /* ===== TOAST ===== */
         .toast {
             position: fixed;
             bottom: 30px;
-            left:  ​50%;
+            left: 50%;
             transform: translateX(-50%);
-            background:: #1a1a2e;
+            background: #1a1a2e;
             color: #fff;
             padding: 12px 24px;
             border-radius: 12px;
@@ -459,9 +458,9 @@
     const MIRROR_COLLECTION = 'karaoke_fila_exibicao';
 
     // ============================================================
-    // 🔐 PROTEÇÃO DE ACESSO — LOGIN + PERMISSÃO POR PÁGINA
+    // 🔐 PROTEÇÃO DE ACESSO — DESATIVADA PARA TESTES
     // ============================================================
-    // Página que ESTE arquivo representa. Troque aqui em cada arquivo.
+    // Página que ESTE arquivo representa.
     const PAGINA_ATUAL = 'fila.html';
     const overlay = document.getElementById('overlay');
     function liberarPagina() {
@@ -470,51 +469,16 @@
         atualizarDisponibilidade();
         setInterval(atualizarDisponibilidade, 30000);
     }
-    // Timer de segurança: se o auth não responder em 8s, não deixa a página travada
-    const timerSeguranca = setTimeout(() => {
-        overlay.innerHTML =
-            '⚠️ Não foi possível verificar o acesso automaticamente.<br><br>' +
-            '<a href="admin.html" style="color:#ffd200;font-weight:600;text-decoration:none;">' +
-            'Ir para o login →</a>';
-    }, 8000);
-    if (typeof firebase.auth === 'function') {
-        firebase.auth().onAuthStateChanged(user => {
-            clearTimeout(timerSeguranca);
-            if (!user) {
-                // Não está logado → vai para a tela de login
-                window.location.href = 'admin.html';
-                return;
-            }
-            // ===== NOVO: verifica se o usuário pode acessar ESTA página =====
-            db.collection('permissoes').doc(user.uid).get()
-                .then(doc => {
-                    const permitidas = doc.exists ? (doc.data().paginas || []) : [];
-                    if (!permitidas.includes(PAGINA_ATUAL)) {
-                        // Sem permissão → volta para o login
-                        window.location.href = 'admin.html';
-                        return;
-                    }
-                    // Tem permissão → libera a página
-                    liberarPagina();
-                })
-                .catch(() => {
-                    // Se der erro, bloqueia por segurança
-                    window.location.href = 'admin.html';
-                });
-    } else {
-        clearTimeout(timerSeguranca);
-        overlay.innerHTML =
-            '⚠️ Erro: Firebase Auth não carregou.<br>' +
-            '<span style="font-size:0.85rem;color:#888;">Verifique a ordem dos SDKs (app deve vir primeiro).</span>';
-        console.error('firebase.auth não está disponível. Confira a ordem dos scripts do Firebase.');
-    }
-    // Botão Sair
+    // 🔧 TESTE: acesso liberado diretamente, sem login/permissão.
+    // Para reativar em produção, restaure o bloco com
+    // firebase.auth().onAuthStateChanged(...) que estava aqui.
+    liberarPagina();
+
+    // Botão Sair (mantido, mas sem efeito de login nos testes)
     const btnSair = document.getElementById('btnSair');
     if (btnSair) {
         btnSair.addEventListener('click', () => {
-            firebase.auth().signOut().then(() => {
-                window.location.href = 'admin.html';
-            });
+            showToast('🔧 Modo teste: login desativado.');
         });
     }
     // ===== DOM =====
@@ -548,7 +512,6 @@
         return div.innerHTML;
     }
     // ===== APOIO PARA CANTAR (campo salvo pelo inclusao.html) =====
-    // No Firestore o campo é "apoioCantar" (boolean true/false).
     function getApoio(s) {
         if (!s) return null;
         if (typeof s.apoioCantar === 'boolean') {
@@ -656,7 +619,7 @@
         listaVozes.forEach(voz => {
             const opcao = document.createElement('option');
             opcao.value = voz.name;
-            opcao.textContent = voz.name + ' ('' + voz.lang + ')'';
+            opcao.textContent = voz.name + ' (' + voz.lang + ')';
             seletorVoz.appendChild(opcao);
         });
         const vozBR = vozes.find(v => v.lang === 'pt-BR');
@@ -764,20 +727,13 @@
         queueCount.textContent = String(pending.length);
     }
     // ============================================================
-    // ✔ MARCAR COMO JÁ CANTOU (somente usuário logado)
-    // NOVO — Fase 2: agora usa um BATCH ATÔMICO que:
+    // ✔ MARCAR COMO JÁ CANTOU
+    // NOVO — Fase 2: usa um BATCH ATÔMICO que:
     //   1) Marca done:true + lidoEm (timestamp) na base FULL (inteligência)
-    //   2) EXCLUÍDA o espelho karaoke_fila_exibicao/{id} (mantém a tela enxuta)
+    //   2) EXCLUI o espelho karaoke_fila_exibicao/{id} (mantém a tela enxuta)
     //   3) Apaga dispositivos/{deviceId} (libera o celular para novo registro)
-    // Se qualquer escrita falhar, nenhuma é aplicada — nunca fica espelho órfão.
     // ============================================================
     async function markDone(id) {
-        const user = firebase.auth().currentUser;
-        if (!user) {
-            showToast('⚠️ Sessão expirada. Faça login novamente.');
-            setTimeout(() => { window.location.href = 'admin.html'; }, 1500);
-            return;
-        }
         try {
             const cantor = ultimosCantores.find(s => s.id === id);
             const deviceId = cantor ? cantor.deviceId : null;
@@ -785,17 +741,15 @@
             const batch = db.batch();
 
             // 1) Base FULL: marca como "já cantou" + grava lidoEm (timestamp)
-            //    lidoEm é a base da inteligência de negócio (tempo de espera).
             batch.update(db.collection(COLLECTION).doc(id), {
                 done: true,
                 lidoEm: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 2) Espelho enxuto: EXCLUÍDA (mesmo ID do registro FULL).
-            //    Mantém a coleção de exibição pequena (~15 registros).
+            // 2) Espelho enxuto: EXCLUÍDO (mesmo ID do registro FULL)
             batch.delete(db.collection(MIRROR_COLLECTION).doc(id));
 
-            // 3) Dispositivo: apaga para liberar o celular (inalterado)
+            // 3) Dispositivo: apaga para liberar o celular
             if (deviceId) {
                 batch.delete(db.collection(DISPOSITIVOS_COLLECTION).doc(String(deviceId)));
             }
