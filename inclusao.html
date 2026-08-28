@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Karaokê - Incluir na Fila</title>
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (auth adicionado para a exceção de usuário logado) -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js">
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
     </script>
@@ -266,12 +268,44 @@
     const CONFIG_PATH = 'config/disponibilidade';
 
     // ============================================================
-    // 📡 COLEÇÃO ESPELHADA (NOVO — Fase 1)
+    // 📡 COLEÇÃO ESPELHADA (Fase 1)
     // Enxuta, só com dados de exibição. A tela Apresentação lê SOMENTE
     // esta coleção (pequena por natureza: ~15 registros).
     // Quando a Fila marcar como lido (done: true), este espelho é EXCLUÍDO.
     // ============================================================
     const MIRROR_COLLECTION = 'karaoke_fila_exibicao';
+
+    // ============================================================
+    // 🔑 EXCEÇÃO À VALIDAÇÃO DE FINGERPRINT (NOVO)
+    // ------------------------------------------------------------
+    // Usuários autorizados (logados) PODEM incluir várias vezes no
+    // mesmo dispositivo — útil para o operador e para testes.
+    // Visitantes NÃO logados continuam com a validação normal.
+    //
+    // Como configurar o "usuário determinado":
+    // 1) Lista de UIDs: cole o UID da conta em UIDS_SEM_FINGERPRINT.
+    //    Para achar o UID: Console Firebase → Authentication →
+    //    Usuários → copie o UID da conta desejada.
+    // 2) OU qualquer usuário com documento em permissoes/{uid}
+    //    (padrão administrativo já usado no projeto) também ignora.
+    // ============================================================
+    const UIDS_SEM_FINGERPRINT = [
+        // Ex.: 'AbC123def456ghi789',  <-- UID do operador
+    ];
+    async function usuarioPodeIgnorarFingerprint() {
+        try {
+            const user = firebase.auth().currentUser;
+            if (!user) return false;
+            // Critério 1: UID listado explicitamente
+            if (UIDS_SEM_FINGERPRINT.includes(user.uid)) return true;
+            // Critério 2: usuário com permissões registradas (admin/operador)
+            const doc = await db.collection('permissoes').doc(user.uid).get();
+            if (doc.exists) return true;
+            return false;
+        } catch {
+            return false; // em caso de erro, mantém a validação normal
+        }
+    }
 
     // ===== DOM =====
     const form        = document.getElementById('formAdd');
@@ -298,7 +332,7 @@
         toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
     }
     // ============================================================
-    // 🛡️ FINGERPRINT DO DISPOSITIVO (NOVO)
+    // 🛡️ FINGERPRINT DO DISPOSITIVO
     // ============================================================
     const FP_STORAGE_KEY = 'karaoke_fp_device_id_v1';
     function gerarUUID() {
@@ -374,8 +408,9 @@
     }
     // ============================================================
     // 🔍 VERIFICA SE O DISPOSITIVO JÁ TEM CADASTRO ATIVO NA FILA
-    // 🔧 TESTE: função DESATIVADA durante os testes (não é chamada no addSinger).
-    // Para reativar: remova os comentários do passo 4 no addSinger.
+    // Regra: bloqueia enquanto existir registro com done === false.
+    // Quando o registro for marcado como "Já cantou" (done: true),
+    // o dispositivo fica liberado para um novo cadastro.
     // ============================================================
     async function getRegistroAtivoDispositivo() {
         const deviceId = getDeviceId();
@@ -528,16 +563,17 @@
             return false;
         }
         // 4. Este celular já tem cadastro ativo na fila?
-        // 🔧 TESTE: validação de fingerprint DESATIVADA durante os testes.
-        // Para reativar, remova os comentários abaixo:
-        // const regAtivo = await getRegistroAtivoDispositivo();
-        // if (regAtivo) {
-        //     showToast('⚠️ Você já está na fila. Aguarde sua vez de cantar.');
-        //     return false;
-        // }
+        //    🔑 NOVO: usuário logado autorizado PULA esta validação.
+        //    Visitante não logado: validação normal (bloqueia duplicidade).
+        const ignorarFingerprint = await usuarioPodeIgnorarFingerprint();
+        if (!ignorarFingerprint) {
+            const regAtivo = await getRegistroAtivoDispositivo();
+            if (regAtivo) {
+                showToast('⚠️ Você já está na fila. Aguarde sua vez de cantar.');
+                return false;
+            }
+        }
         // 5. Cria cadastro + espelho + bloqueio do dispositivo de forma ATÔMICA.
-        //    Se o bloqueio já existir (mesmo aparelho), o batch falha e o
-        //    cadastro é negado — garantia de cadastro único no servidor.
         const deviceId = getDeviceId();
         const fp = getDeviceFingerprint();
         try {
@@ -559,10 +595,8 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 2) ESPELHO ENXUTO (NOVO — Fase 1)
+            // 2) ESPELHO ENXUTO (Fase 1)
             //    Mesmo ID do registro FULL, apenas campos de exibição.
-            //    A tela Apresentação lê SOMENTE esta coleção (pequena por natureza).
-            //    Quando a Fila marcar como lido (done: true), este espelho é EXCLUÍDO.
             const espelhoRef = db.collection(MIRROR_COLLECTION).doc(filaRef.id);
             batch.set(espelhoRef, {
                 nome: nome.trim(),
@@ -574,7 +608,7 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 3) Bloqueio do dispositivo (inalterado)
+            // 3) Bloqueio do dispositivo
             const lockRef = db.collection(LOCK_COLLECTION).doc(deviceId);
             batch.set(lockRef, {
                 deviceFingerprint: fp,
