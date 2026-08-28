@@ -276,21 +276,21 @@
     const MIRROR_COLLECTION = 'karaoke_fila_exibicao';
 
     // ============================================================
-    // 🔑 EXCEÇÃO À VALIDAÇÃO DE FINGERPRINT (NOVO)
+    // 🔑 USUÁRIO MASTER (NOVO)
     // ------------------------------------------------------------
-    // Usuários autorizados (logados) PODEM incluir várias vezes no
-    // mesmo dispositivo — útil para o operador e para testes.
-    // Visitantes NÃO logados continuam com a validação normal.
+    // O usuário master (logado autorizado) PULA as validações de
+    // device (fingerprint) E de nome do cantor — pode incluir várias
+    // vezes no mesmo aparelho e nomes repetidos.
+    // Visitantes NÃO logados continuam com as duas validações ativas.
     //
-    // Como configurar o "usuário determinado":
+    // Como configurar o master:
     // 1) Lista de UIDs: cole o UID da conta em UIDS_SEM_FINGERPRINT.
-    //    Para achar o UID: Console Firebase → Authentication →
-    //    Usuários → copie o UID da conta desejada.
+    //    Console Firebase → Authentication → Usuários → ⋮ → Copy UID.
     // 2) OU qualquer usuário com documento em permissoes/{uid}
-    //    (padrão administrativo já usado no projeto) também ignora.
+    //    (padrão administrativo já usado no projeto) também é master.
     // ============================================================
-    const UIDS_SEM_FINGERPRINT = ['ruBuKQmZcuVVBKzCowpxpaUemGn1'
-        // Ex.: 'AbC123def456ghi789',  <-- UID do operador
+    const UIDS_SEM_FINGERPRINT = [
+        // Ex.: 'AbC123def456ghi789',  <-- UID do operador/master
     ];
     async function usuarioPodeIgnorarFingerprint() {
         try {
@@ -556,17 +556,19 @@
             showToast(`⚠️ Limite de ${limite} músicas por dia atingido! Volte amanhã.`);
             return false;
         }
-        // 3. Pessoa já está na fila?
-        const jaEsta = await pessoaJaNaFila(nome);
-        if (jaEsta) {
-            showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde sua vez.`);
-            return false;
+        // 🔑 NOVO: usuário master pula as validações de nome E de device
+        const ehMaster = await usuarioPodeIgnorarFingerprint();
+
+        // 3. Pessoa já está na fila? (master pula esta validação)
+        if (!ehMaster) {
+            const jaEsta = await pessoaJaNaFila(nome);
+            if (jaEsta) {
+                showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde sua vez.`);
+                return false;
+            }
         }
-        // 4. Este celular já tem cadastro ativo na fila?
-        //    🔑 NOVO: usuário logado autorizado PULA esta validação.
-        //    Visitante não logado: validação normal (bloqueia duplicidade).
-        const ignorarFingerprint = await usuarioPodeIgnorarFingerprint();
-        if (!ignorarFingerprint) {
+        // 4. Este celular já tem cadastro ativo na fila? (master pula esta validação)
+        if (!ehMaster) {
             const regAtivo = await getRegistroAtivoDispositivo();
             if (regAtivo) {
                 showToast('⚠️ Você já está na fila. Aguarde sua vez de cantar.');
