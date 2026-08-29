@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Karaokê - ao Vivo</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.container { max-width: 900px; width: 100%; }
+.header { text-align: center; margin-bottom: 20px; }
+.header .icon { font-size: 44px; }
+.header h1 { font-size: 26px; margin-top: 6px; }
+.header .sub { color: #b8a8e0; margin-top: 4px; }
+.status-bar {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 12px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.status-dot.online { background: #2ecc71; }
+.status-dot.offline { background: #e74c3c; }
+.conn-text { font-size: 14px; }
+.avail-pill { font-size: 13px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.08); }
+.btn-enter {
+  display: inline-block; background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff; border: none; padding: 10px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.now-playing {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center;
+}
+.now-playing .label { font-size: 14px; color: #e74c3c; font-weight: 600; margin-bottom: 12px; }
+.now-playing .singer {
+  font-size: 34px; font-weight: 700; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.now-playing .music { font-size: 20px; color: #b8a8e0; margin-bottom: 4px; }
+.artist-inline { color: #8a7ab8; }
+.empty-now { color: #8a7ab8; padding: 16px; }
+.like-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 40px; color: #b8a8e0; line-height: 1;
+  transition: transform 0.2s ease, color 0.2s ease; outline: none;
+}
+.like-btn:hover { transform: scale(1.15); color: #f1c40f; }
+.like-btn:active { transform: scale(0.9); }
+.like-btn.liked { color: #f1c40f; animation: pop 0.3s ease; }
+@keyframes pop {
+  0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); }
+}
+.like-count-inline { font-size: 20px; font-weight: 700; color: #f1c40f; }
+.queue-container {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 20px;
+}
+.queue-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; justify-content: space-between; }
+.queue-title .count { color: #f1c40f; }
+.queue-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 8px;
+}
+.queue-item .pos {
+  width: 32px; height: 32px; background: #6c5ce7; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.queue-item .info { flex: 1; }
+.queue-item .info .name { font-weight: 600; font-size: 20px; }
+.queue-item .info .song { font-size: 16px; color: #b8a8e0; }
+.empty-queue { color: #8a7ab8; text-align: center; padding: 16px; }
+/* ===== BOTÃO SAIR DA FILA ===== */
+.btn-sair-fila {
+  background: rgba(255,70,70,0.18); color: #ff6b6b;
+  border: 1px solid rgba(255,70,70,0.35); border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 4px 10px; margin-right: 8px; transition: background 0.2s;
+}
+.btn-sair-fila:hover { background: rgba(255,70,70,0.28); }
+/* ===== MODAL MOTIVO DE SAÍDA ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #1e1b3a; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+  padding: 28px; width: 100%; max-width: 420px;
+}
+.modal h3 { margin-bottom: 8px; color: #fff; }
+.modal p { color: #b8a8e0; font-size: 14px; margin-bottom: 14px; }
+.modal textarea {
+  width: 100%; min-height: 90px; padding: 12px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.35); color: #fff;
+  font-size: 14px; resize: vertical; outline: none;
+}
+.modal textarea:focus { border-color: #f7971e; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.modal-actions .btn-cancel {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #ccc;
+  padding: 10px 18px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;
+}
+.modal-actions .btn-confirm {
+  background: linear-gradient(135deg, #e74c3c, #ff6b6b); border: none; color: #fff;
+  padding: 10px 18px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 700;
+}
+.closed-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; text-align: center;
+}
+.closed-overlay.active { display: flex; }
+.closed-overlay h2 { font-size: 28px; margin-bottom: 8px; }
+.closed-overlay p { color: #b8a8e0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="icon">🎤</div>
+    <h1>Karaokê Cante no Villa</h1>
+    <div class="sub">Próximas apresentações</div>
+  </div>
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span class="conn-text" id="statusText">Conectando...</span>
+    <span class="avail-pill" id="availPill">Verificando disponibilidade...</span>
+    <a class="btn-enter" href="inclusao.html">➕ Entrar na Fila</a>
+  </div>
+  <div class="now-playing" id="nowPlaying">
+    <div class="label">🔴 Cantando agora</div>
+    <div id="nowContent">
+      <div class="empty-now">Aguardando próximo cantor...</div>
+    </div>
+  </div>
+  <div class="queue-container" id="queueContainer">
+    <div class="queue-title">
+      <span>📋 Próximos da fila</span>
+      <span class="count" id="queueCount">0</span>
+    </div>
+    <div id="queueList">
+      <div class="empty-queue">Carregando...</div>
+    </div>
+  </div>
+</div>
+<div class="closed-overlay" id="closedOverlay">
+  <div>
+    <div style="font-size:40px;">🎤</div>
+    <h2>Evento encerrado</h2>
+    <p id="closedMsg">A fila do karaokê abre apenas durante o evento. Volte em breve!</p>
+  </div>
+</div>
+<!-- MODAL MOTIVO DE SAÍDA (motivo opcional) -->
+<div class="modal-overlay" id="modalSaida">
+  <div class="modal">
+    <h3>🚪 Sair da Fila</h3>
+    <p>Confirme a saída. O registro será removido da fila e o dispositivo liberado. O motivo é opcional.</p>
+    <textarea id="motivoSaida" placeholder="Motivo da saída (opcional)"></textarea>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="fecharModalSaida()">Cancelar</button>
+      <button type="button" class="btn-confirm" onclick="confirmarSaida()">Confirmar saída</button>
+    </div>
+  </div>
+</div>
+<script>
+// ============================================================
+// 🔥 CONFIGURAÇÃO DO FIREBASE
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+  authDomain: "karaokevvp.firebaseapp.com",
+  projectId: "karaokevvp",
+  storageBucket: "karaokevvp.firebasestorage.app",
+  messagingSenderId: "938258818805",
+  appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COLLECTION = 'karaoke_fila';
+const DISPOSITIVOS_COLLECTION = 'dispositivos';
+const CONFIG_PATH = 'config/disponibilidade';
+const MIRROR_COLLECTION = 'karaoke_fila_exibicao';
+
+// ===== DOM =====
+const nowContent    = document.getElementById('nowContent');
+const queueList     = document.getElementById('queueList');
+const queueCount    = document.getElementById('queueCount');
+const statusDot     = document.getElementById('statusDot');
+const statusText    = document.getElementById('statusText');
+const availPill     = document.getElementById('availPill');
+const closedOverlay = document.getElementById('closedOverlay');
+const closedMsg     = document.getElementById('closedMsg');
+let filaAberta = true;
+let limiteDiario = 0;
+let saidaPendenteId = null;
+
+// ===== STATUS DE CONEXÃO =====
+function setStatus(online) {
+  statusDot.className = 'status-dot ' + (online ? 'online' : 'offline');
+  statusText.textContent = online ? 'Conectado' : 'Offline — reconectando...';
+}
+
+// ===== UTILITÁRIOS =====
+function esc(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+// 🛡️ FINGERPRINT DO DISPOSITIVO
+// (verifica se é o mesmo device usado na inclusão)
+// ============================================================
+const FP_STORAGE_KEY = 'karaoke_fp_device_id_v1';
+function gerarUUID() {
+  if (window.crypto && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(FP_STORAGE_KEY);
+    if (!id) {
+      id = gerarUUID();
+      localStorage.setItem(FP_STORAGE_KEY, id);
+    }
+    return id;
+  } catch {
+    return gerarUUID();
+  }
+}
+function hashFingerprint(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+function getDeviceFeatures() {
+  const nav = navigator;
+  return [
+    nav.userAgent,
+    nav.language || '',
+    (nav.languages || []).join(','),
+    Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+    window.devicePixelRatio || 1,
+    nav.platform || '',
+    nav.hardwareConcurrency || '',
+    nav.deviceMemory || '',
+    nav.maxTouchPoints || 0
+  ].join('|');
+}
+function getCanvasFingerprint() {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(0, 0, 240, 60);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('KaraokeVP::fp', 2, 2);
+    return canvas.toDataURL();
+  } catch {
+    return '';
+  }
+}
+function getDeviceFingerprint() {
+  const base = getDeviceFeatures() + '|' + getCanvasFingerprint();
+  return hashFingerprint(base);
+}
+
+// ============================================================
+// 🚪 SAIR DA FILA
+// ============================================================
+async function sairDaFila(id) {
+  try {
+    const fullDoc = await db.collection(COLLECTION).doc(id).get();
+    if (!fullDoc.exists) {
+      alert('Registro não encontrado.');
+      return;
+    }
+    const data = fullDoc.data();
+    const deviceIdReg = data.deviceId;
+    const fpReg = data.deviceFingerprint;
+    const meuDeviceId = getDeviceId();
+    const meuFp = getDeviceFingerprint();
+    const mesmoDevice = (deviceIdReg && deviceIdReg === meuDeviceId) ||
+                        (fpReg && fpReg === meuFp);
+    if (!mesmoDevice) {
+      alert('Solicitação negada: este dispositivo não é o mesmo usado na inclusão.');
+      return;
+    }
+    // Dispositivo confirmado → abre o modal de motivo (opcional)
+    saidaPendenteId = id;
+    document.getElementById('motivoSaida').value = '';
+    document.getElementById('modalSaida').classList.add('active');
+  } catch (error) {
+    console.error('Erro ao verificar dispositivo:', error);
+    alert('Erro ao verificar o dispositivo. Tente novamente.');
+  }
+}
+function fecharModalSaida() {
+  document.getElementById('modalSaida').classList.remove('active');
+  saidaPendenteId = null;
+}
+async function confirmarSaida() {
+  const motivo = document.getElementById('motivoSaida').value.trim();
+  const id = saidaPendenteId;
+  if (!id) return;
+  try {
+    const fullDoc = await db.collection(COLLECTION).doc(id).get();
+    if (!fullDoc.exists) {
+      alert('Registro não encontrado.');
+      fecharModalSaida();
+      return;
+    }
+    const deviceId = fullDoc.data().deviceId;
+    const batch = db.batch();
+    // 1) FULL: marca que o cantor saiu da fila (motivo opcional)
+    batch.update(db.collection(COLLECTION).doc(id), {
+      saiuDaFila: true,
+      ...(motivo ? { motivoSaida: motivo } : {}),
+      saiuEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // 2) Espelho: remove o registro da tela pública
+    batch.delete(db.collection(MIRROR_COLLECTION).doc(id));
+    // 3) Dispositivo: libera para novas inserções
+    if (deviceId) {
+      batch.delete(db.collection(DISPOSITIVOS_COLLECTION).doc(String(deviceId)));
+    }
+    await batch.commit();
+    fecharModalSaida();
+    alert('Você saiu da fila. Dispositivo liberado para nova inclusão.');
+  } catch (error) {
+    console.error('Erro ao confirmar saída:', error);
+    alert('Erro ao processar a saída. Tente novamente.');
+  }
+}
+
+// ============================================================
+// ⭐ SISTEMA DE LIKES (ESTRELA)
+// ============================================================
+function getLikedMap() {
+  try { return JSON.parse(localStorage.getItem('karaoke_likes') || '{}'); }
+  catch { return {}; }
+}
+function hasLiked(singerId) {
+  return !!getLikedMap()[singerId];
+}
+function markLiked(singerId) {
+  const map = getLikedMap();
+  map[singerId] = true;
+  localStorage.setItem('karaoke_likes', JSON.stringify(map));
+}
+async function darLike(singerId) {
+  if (!singerId || hasLiked(singerId)) return;
+  try {
+    await db.collection(COLLECTION).doc(singerId).update({
+      likes: firebase.firestore.FieldValue.increment(1)
+    });
+    markLiked(singerId);
+    const btn = document.getElementById('likeBtn');
+    const count = document.getElementById('likeCount');
+    if (btn) {
+      btn.classList.add('liked');
+      btn.textContent = '⭐';
+      btn.disabled = true;
+    }
+    if (count) {
+      count.textContent = (parseInt(count.textContent, 10) || 0) + 1;
+    }
+  } catch (error) {
+    console.error('Erro ao registrar like:', error);
+  }
+}
+
+// ============================================================
+// MELHORIA 2: CARREGA O LIMITE DIÁRIO UMA VEZ
+// ============================================================
+async function carregarLimiteDiario() {
+  try {
+    const doc = await db.doc(CONFIG_PATH).get();
+    if (doc.exists) {
+      limiteDiario = doc.data().LimiteDiario || 0;
+    }
+  } catch (e) {
+    console.error('Erro ao carregar LimiteDiario:', e);
+  }
+}
+
+// ============================================================
+// RENDER — CANTOR ATUAL (NO PALCO)
+// ============================================================
+function renderCurrent(current) {
+  const pending = ultimosPendentes || [];
+  const nextUp = pending.length > 0 ? pending[0] : null;
+  if (current) {
+    const likes = current.likes || 0;
+    const liked = hasLiked(current.id);
+    nowContent.innerHTML = `
+      <div class="singer">
+        ${esc(current.nome)}
+        <button class="like-btn ${liked ? 'liked' : ''}" id="likeBtn"
+                title="Curtir ${esc(current.nome)}"
+                ${liked ? 'disabled' : ''}>
+          ${liked ? '⭐' : '☆'}
+        </button>
+        <span class="like-count-inline" id="likeCount">${likes}</span>
+      </div>
+      <div class="music">🎵 ${esc(current.musica)} — <span class="artist-inline">${esc(current.artista || 'Autor')}</span></div>
+    `;
+    const btn = document.getElementById('likeBtn');
+    if (btn) btn.addEventListener('click', () => darLike(current.id));
+  } else if (nextUp) {
+    nowContent.innerHTML = `
+      <div class="singer">${esc(nextUp.nome)}</div>
+      <div class="music">🎵 ${esc(nextUp.musica)} — <span class="artist-inline">${esc(nextUp.artista || 'Autor')}</span></div>
+      <div class="artist" style="color:#f7971e;font-style:normal;margin-top:6px;">⏳ Próximo(a) a cantar</div>
+    `;
+  } else {
+    nowContent.innerHTML = `<div class="empty-now">Aguardando próximo cantor...</div>`;
+  }
+}
+
+// ============================================================
+// RENDER — FILA (PRÓXIMOS)
+// ============================================================
+let ultimosPendentes = [];
+function renderQueue(pending) {
+  ultimosPendentes = pending;
+  const totalMusicas = limiteDiario;
+  if (pending.length === 0) {
+    queueList.innerHTML = `<div class="empty-queue">Fila vazia — seja o próximo! 🎤</div>`;
+    queueCount.textContent = '0/' + totalMusicas;
+    return;
+  }
+  queueCount.textContent = pending.length + '/' + totalMusicas;
+  queueList.innerHTML = pending.map((s, i) => `
+    <div class="queue-item">
+      <div class="pos">${i + 1}</div>
+      <div class="info">
+        <div class="name">
+          <button type="button" class="btn-sair-fila" onclick="sairDaFila('${s.id}')" title="Sair da fila">🚪 Sair</button>
+          ${esc(s.nome)}
+        </div>
+        <div class="song">${esc(s.musica)} — ${esc(s.artista || '')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// DISPONIBILIDADE
+// ============================================================
+function cruzaMeiaNoite(ini, fim) {
+  return ini > fim;
+}
+function horaStr(d) {
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+async function atualizarDisponibilidade() {
+  try {
+    const doc = await db.doc(CONFIG_PATH).get();
+    if (!doc.exists) {
+      filaAberta = true;
+      availPill.textContent = 'Fila aberta';
+      closedOverlay.classList.remove('active');
+      return;
+    }
+    const cfg = doc.data();
+    if (cfg.ativo === false) {
+      filaAberta = false;
+      availPill.textContent = '🔴 Fila fechada';
+      closedMsg.textContent = cfg.msg || 'Cadastros encerrados pelo organizador.';
+      closedOverlay.classList.add('active');
+      return;
+    }
+    const agora = horaStr(new Date());
+    const horarioInicio = cfg.horarioInicio || '00:00';
+    const horarioFim = cfg.horarioFim || '23:59';
+    const dentro = cruzaMeiaNoite(horarioInicio, horarioFim)
+      ? (agora >= horarioInicio || agora <= horarioFim)
+      : (agora >= horarioInicio && agora <= horarioFim);
+    filaAberta = dentro;
+    availPill.textContent = dentro ? `Fila aberta até ${horarioFim}` : `Fila fechada (abre ${horarioInicio})`;
+    closedOverlay.classList.toggle('active', !dentro);
+  } catch (e) {
+    console.error('Erro ao verificar disponibilidade:', e);
+  }
+}
+
+// ============================================================
+// ESCUTA MUDANÇAS EM TEMPO REAL
+// ============================================================
+function listenQueue() {
+  db.collection(MIRROR_COLLECTION)
+    .orderBy('createdAt', 'asc')
+    .onSnapshot((snapshot) => {
+      const pending = [];
+      snapshot.forEach((doc) => {
+        pending.push({ id: doc.id, ...doc.data() });
+      });
+      renderQueue(pending);
+      renderCurrent(null);
+      setStatus(true);
+    }, (error) => {
+      console.error('Erro no Firestore (fila):', error);
+      setStatus(false);
+    });
+}
+function listenCurrent() {
+  db.collection(COLLECTION)
+    .where('done', '==', true)
+    .orderBy('lidoEm', 'desc')
+    .limit(1)
+    .onSnapshot((snapshot) => {
+      let current = null;
+      snapshot.forEach((doc) => {
+        current = { id: doc.id, ...doc.data() };
+      });
+      renderCurrent(current);
+    }, (error) => {
+      console.error('Erro no Firestore (cantor atual):', error);
+    });
+}
+
+// ===== INICIA =====
+listenQueue();
+listenCurrent();
+carregarLimiteDiario();
+atualizarDisponibilidade();
+setInterval(atualizarDisponibilidade, 120000);
+</script>
+</body>
+</html>
