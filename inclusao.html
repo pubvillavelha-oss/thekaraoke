@@ -251,6 +251,18 @@
             display: none;
         }
         .result-item .badge-karaoke.show { display: inline-block; }
+        /* ⭐ Selo do vídeo mais recomendado */
+        .top-recommended {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(247, 151, 30, 0.12);
+            border: 1px solid rgba(247, 151, 30, 0.4);
+            color: #ffd200;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -711,13 +723,26 @@
         }
     });
     // ============================================================
-    // 🔍 BUSCADOR DE VÍDEO KARAOKÊ NO YOUTUBE
-    // Query: "<música> <artista> karaoke" → YouTube Data API v3
-    // Preenche o campo "link" com o vídeo escolhido pelo usuário.
-    // A busca NÃO toca o Firestore (não aumenta o pico de leituras).
+    // 🔍 BUSCADOR DE VÍDEO KARAOKÊ NO YOUTUBE (COM QUALIDADE)
+    // ------------------------------------------------------------
+    // 1ª chamada: search.list → acha os vídeos
+    // 2ª chamada: videos.list → views, likes e duração
+    // Cache no Firestore: evita gastar cota do YouTube em músicas
+    // repetidas (resultados ficam válidos por CACHE_DIAS_VALIDADE).
+    // Score de qualidade (0-100) → ordena e marca o recomendado.
     // ============================================================
-    const YT_API_KEY = 'AIzaSyCti6MUbF8lHERkzQ859M-sVGdzzzUkYb0'; // ver passo 3
+    const YT_API_KEY = 'AIzaSyCti6MUbF8lHERkzQ859M-sVGdzzzUkYb0';
     const YT_MAX_RESULTS = 5;
+    const CACHE_COLLECTION = 'karaoke_cache_youtube';
+    const CACHE_DIAS_VALIDADE = 7;
+
+    // ⚙️ PESOS DO SCORE DE QUALIDADE (total = 100) — ajuste à vontade
+    const SCORE_WEIGHTS = {
+        karaoke: 40,     // título contém "karaoke"
+        views: 30,       // visualizações (escala logarítmica, 1 mi+ = máximo)
+        engajamento: 20, // likes ÷ visualizações (4%+ = máximo)
+        duracao: 10      // duração ideal de karaokê (2-6 min)
+    };
 
     const btnBuscarYT = document.getElementById('btnBuscarYT');
     const searchStatus = document.getElementById('searchStatus');
@@ -728,6 +753,97 @@
         searchStatus.className = 'search-status' + (tipo ? ' ' + tipo : '');
     }
 
+    // Converte "PT2M30S" (ISO 8601 do YouTube) para segundos
+    function duracaoParaSegundos(iso) {
+        const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        if (!m) return 0;
+        return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
+    }
+
+    // Formata visualizações: 1234567 → "1,2 mi"
+    function formatarViews(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + ' mi';
+        if (n >= 1000) return (n / 1000).toFixed(1).replace('.', ',') + ' mil';
+        return String(n);
+    }
+
+    // Formata duração: 245 → "4:05"
+    function formatarDuracao(seg) {
+        const min = Math.floor(seg / 60);
+        const s = seg % 60;
+        return min + ':' + String(s).padStart(2, '0');
+    }
+
+    // Score de qualidade (0 a 100) usando os pesos configuráveis
+    function calcularScore(v) {
+        const W = SCORE_WEIGHTS;
+        let score = 0;
+        if (v.ehKaraoke) score += W.karaoke;
+        score += W.views * Math.min(1, Math.log10((v.views || 0) + 1) / Math.log10(1000001));
+        if (v.views > 0) {
+            score += W.engajamento * Math.min(1, ((v.likes || 0) / v.views) / 0.04);
+        }
+        const dur = v.duration || 0;
+        if (dur >= 120 && dur <= 360) score += W.duracao;
+        else if (dur >= 60 && dur <= 480) score += W.duracao * 0.5;
+        return Math.round(score);
+    }
+
+    // Recebe itens crus (id, titulo, canal, thumb, views, likes, duration),
+    // calcula o score, ordena e retorna prontos para exibir.
+    // Funciona tanto para resultados da API quanto do cache.
+    function montarVideosComScore(itens) {
+        return itens.map((v) => {
+            const comScore = {
+                ...v,
+                ehKaraoke: /karaok/i.test(v.titulo) // cobre "karaoke" e "karaokê"
+            };
+            comScore.score = calcularScore(comScore);
+            return comScore;
+        }).sort((a, b) => (b.score - a.score) || (Number(b.ehKaraoke) - Number(a.ehKaraoke)));
+    }
+
+    // ----- CACHE NO FIRESTORE -----
+    function cacheKey(musica, artista) {
+        return hashFingerprint((musica + '|' + artista).toLowerCase());
+    }
+
+    async function lerCache(musica, artista) {
+        try {
+            const doc = await db.collection(CACHE_COLLECTION).doc(cacheKey(musica, artista)).get();
+            if (!doc.exists) return null;
+            const dados = doc.data();
+            const salvoEm = (dados.salvoEm && dados.salvoEm.toDate) ? dados.salvoEm.toDate().getTime() : 0;
+            if (Date.now() - salvoEm > CACHE_DIAS_VALIDADE * 86400000) return null; // cache vencido
+            if (!Array.isArray(dados.videos) || !dados.videos.length) return null;
+            return dados.videos; // itens crus
+        } catch {
+            return null; // se falhar, segue para a API normalmente
+        }
+    }
+
+    async function salvarCache(musica, artista, videos) {
+        try {
+            await db.collection(CACHE_COLLECTION).doc(cacheKey(musica, artista)).set({
+                musica: musica.trim(),
+                artista: artista.trim(),
+                videos: videos.map((v) => ({
+                    id: v.id,
+                    titulo: v.titulo,
+                    canal: v.canal,
+                    thumb: v.thumb,
+                    views: v.views,
+                    likes: v.likes,
+                    duration: v.duration
+                })),
+                salvoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (e) {
+            console.error('Erro ao salvar cache:', e); // não bloqueia a busca
+        }
+    }
+
+    // ----- BUSCA NA API DO YOUTUBE -----
     async function buscarVideosKaraoke(musica, artista) {
         const query = encodeURIComponent(`${musica} ${artista} karaoke`);
         const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${YT_MAX_RESULTS}&relevanceLanguage=pt&q=${query}&key=${YT_API_KEY}`;
@@ -746,20 +862,49 @@
             }
             throw new Error('Erro na busca: ' + (data.error.message || 'tente novamente.'));
         }
-        return (data.items || []).map((item) => ({
-            id: item.id.videoId,
-            titulo: item.snippet.title,
-            canal: item.snippet.channelTitle,
-            thumb: item.snippet.thumbnails.default ? item.snippet.thumbnails.default.url : '',
-            ehKaraoke: /karaok/i.test(item.snippet.title) // pega "karaoke" e "karaokê"
-        }));
+        const itens = data.items || [];
+        if (!itens.length) return [];
+
+        // 2ª chamada: estatísticas e duração dos vídeos encontrados
+        const ids = itens.map((i) => i.id.videoId).join(',');
+        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${ids}&key=${YT_API_KEY}`;
+        const statsResp = await fetch(statsUrl);
+        const statsData = await statsResp.json();
+        const statsMap = {};
+        (statsData.items || []).forEach((v) => {
+            statsMap[v.id] = {
+                views: parseInt(v.statistics.viewCount || 0, 10),
+                likes: parseInt(v.statistics.likeCount || 0, 10),
+                duration: duracaoParaSegundos(v.contentDetails.duration || '')
+            };
+        });
+
+        return itens.map((item) => {
+            const s = statsMap[item.id.videoId] || { views: 0, likes: 0, duration: 0 };
+            return {
+                id: item.id.videoId,
+                titulo: item.snippet.title,
+                canal: item.snippet.channelTitle,
+                thumb: item.snippet.thumbnails.default ? item.snippet.thumbnails.default.url : '',
+                views: s.views,
+                likes: s.likes,
+                duration: s.duration
+            };
+        });
     }
 
+    // ----- RENDERIZA LISTA DE RESULTADOS -----
     function renderResultados(videos) {
         resultsList.innerHTML = '';
-        // Versões com "karaoke" no título aparecem primeiro
-        videos.sort((a, b) => Number(b.ehKaraoke) - Number(a.ehKaraoke));
-        videos.forEach((v) => {
+        videos.forEach((v, idx) => {
+            // Selo de melhor qualidade no topo da lista
+            if (idx === 0) {
+                const top = document.createElement('div');
+                top.className = 'top-recommended';
+                top.textContent = '⭐ Mais recomendado (qualidade ' + v.score + '/100)';
+                resultsList.appendChild(top);
+            }
+
             const item = document.createElement('div');
             item.className = 'result-item';
 
@@ -775,7 +920,10 @@
             titulo.textContent = v.titulo;
             const canal = document.createElement('div');
             canal.className = 'canal';
-            canal.textContent = v.canal;
+            const meta = [v.canal];
+            if (v.views > 0) meta.push(formatarViews(v.views) + ' views');
+            if (v.duration > 0) meta.push(formatarDuracao(v.duration));
+            canal.textContent = meta.join(' • ');
             info.appendChild(titulo);
             info.appendChild(canal);
 
@@ -799,6 +947,7 @@
         resultsList.classList.add('show');
     }
 
+    // ----- CLIQUE NO BOTÃO BUSCAR -----
     btnBuscarYT.addEventListener('click', async () => {
         const musica = inputMusica.value.trim();
         const artista = inputArtista.value.trim();
@@ -814,12 +963,27 @@
         btnBuscarYT.disabled = true;
         btnBuscarYT.textContent = '⏳ Buscando...';
         resultsList.classList.remove('show');
-        setSearchStatus('Buscando versão karaokê...', 'loading');
+
+        // 1. Tenta o cache (1 leitura no Firestore, 0 cota do YouTube)
+        const cache = await lerCache(musica, artista);
+        if (cache) {
+            const videos = montarVideosComScore(cache);
+            setSearchStatus('📦 Resultados do cache (música já buscada antes)', 'info');
+            renderResultados(videos);
+            btnBuscarYT.disabled = false;
+            btnBuscarYT.textContent = '🔍 Buscar';
+            return;
+        }
+
+        // 2. Sem cache → busca na API do YouTube e salva no cache
+        setSearchStatus('Buscando e avaliando qualidade...', 'loading');
         try {
-            const videos = await buscarVideosKaraoke(musica, artista);
-            if (!videos.length) {
+            const encontrados = await buscarVideosKaraoke(musica, artista);
+            if (!encontrados.length) {
                 setSearchStatus('Nenhum vídeo encontrado. Tente outro nome ou cole o link manualmente.', 'error');
             } else {
+                salvarCache(musica, artista, encontrados); // salva sem travar a tela
+                const videos = montarVideosComScore(encontrados);
                 setSearchStatus('', '');
                 renderResultados(videos);
             }
