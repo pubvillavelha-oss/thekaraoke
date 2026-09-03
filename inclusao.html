@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Karaokê - Incluir na Fila</title>
+    <!-- Firebase SDKs (auth adicionado para a exceção de usuário logado) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container { max-width: 520px; width: 100%; }
+        header { text-align: center; padding: 20px 0; }
+        header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        header p { color: #aaa; margin-top: 6px; font-size: 0.9rem; }
+        .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 28px 24px;
+        }
+        .form-group { margin-bottom: 16px; }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #f7971e;
+            box-shadow: 0 0 0 3px rgba(247, 151, 30, 0.2);
+        }
+        input::placeholder { color: #777; }
+        .form-group-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #ccc;
+            margin-bottom: 0;
+            user-select: none;
+        }
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #f7971e;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+            background: linear-gradient(90deg, #f7971e, #ffd200);
+            color: #1a1a2e;
+            margin-top: 8px;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            background: transparent;
+            color: #e0e0e0;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); transform: scale(1.02); }
+        .btn-secondary:active { transform: scale(0.97); }
+        .success-msg {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: rgba(70, 200, 70, 0.1);
+            border: 1px solid rgba(70, 200, 70, 0.2);
+            border-radius: 12px;
+            margin-top: 16px;
+        }
+        .success-msg .icon { font-size: 2rem; }
+        .success-msg .text {
+            font-size: 1.1rem;
+            color: #6bff6b;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+        .success-msg .sub { font-size: 0.85rem; color: #999; margin-top: 4px; }
+        .closed-msg {
+            display: none;
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 70, 70, 0.08);
+            border: 1px solid rgba(255, 70, 70, 0.2);
+            border-radius: 12px;
+        }
+        .closed-msg .icon { font-size: 2.4rem; }
+        .closed-msg .title {
+            font-size: 1.2rem;
+            color: #ff6b6b;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .closed-msg .sub { font-size: 0.9rem; color: #999; margin-top: 6px; }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 16px;
+            font-size: 0.85rem;
+            padding: 8px 14px;
+            border-radius: 20px;
+        }
+        .status-bar.open { background: rgba(70, 200, 70, 0.12); color: #6bff6b; }
+        .status-bar.closed { background: rgba(255, 70, 70, 0.12); color: #ff6b6b; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+        .footer { text-align: center; margin-top: 20px; color: #555; font-size: 0.8rem; }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.4s, bottom 0.4s;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            max-width: 90%;
+        }
+        .toast.show { opacity: 1; bottom: 50px; }
+        /* 🔍 Buscador de vídeo karaokê no YouTube */
+        .link-search-row { display: flex; gap: 8px; }
+        .link-search-row input { flex: 1; }
+        .btn-search {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            border: 1px solid rgba(247, 151, 30, 0.5);
+            border-radius: 10px;
+            background: rgba(247, 151, 30, 0.15);
+            color: #ffd200;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            white-space: nowrap;
+        }
+        .btn-search:hover { background: rgba(247, 151, 30, 0.3); transform: scale(1.02); }
+        .btn-search:active { transform: scale(0.97); }
+        .btn-search:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .search-status { margin-top: 8px; font-size: 0.85rem; min-height: 1em; }
+        .search-status.loading { color: #aaa; }
+        .search-status.info { color: #6bff6b; }
+        .search-status.error { color: #ffb3b3; }
+        .results-list { margin-top: 10px; display: none; }
+        .results-list.show { display: block; }
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .result-item:hover { border-color: #f7971e; background: rgba(247, 151, 30, 0.1); }
+        .result-item .thumb {
+            width: 58px; height: 40px; border-radius: 6px; object-fit: cover;
+            background: #1a1a2e; flex-shrink: 0;
+        }
+        .result-item .info { min-width: 0; flex: 1; }
+        .result-item .info .titulo {
+            font-size: 0.88rem; color: #fff; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .result-item .info .canal {
+            font-size: 0.78rem; color: #999; margin-top: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .result-item .badge-karaoke {
+            flex-shrink: 0;
+            font-size: 0.7rem; font-weight: 700;
+            padding: 3px 8px; border-radius: 20px;
+            background: rgba(70, 200, 70, 0.15); color: #6bff6b;
+            border: 1px solid rgba(70, 200, 70, 0.3);
+            display: none;
+        }
+        .result-item .badge-karaoke.show { display: inline-block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎤 Fila do Karaokê</h1>
+        <p>Preencha para entrar na fila</p>
+    </header>
+    <!-- STATUS DE DISPONIBILIDADE -->
+    <div class="status-bar closed" id="statusBar">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Verificando disponibilidade...</span>
+    </div>
+    <!-- FORA DO HORÁRIO -->
+    <div class="closed-msg" id="closedMsg">
+        <div class="icon">⏰</div>
+        <div class="title">Cadastros encerrados no momento</div>
+        <div class="sub" id="closedSub">A fila do karaokê abre apenas durante o evento. Volte em breve!</div>
+    </div>
+    <!-- FORM -->
+    <div class="card" id="formCard">
+        <form id="formAdd">
+            <div class="form-group">
+                <label for="nome">Seu Nome *</label>
+                <input type="text" id="nome" placeholder="Ex: Ana" required />
+            </div>
+            <div class="form-group form-group-checkbox">
+                <label class="checkbox-label" for="apoioCantar">
+                    <input type="checkbox" id="apoioCantar" name="apoioCantar" value="sim" />
+                    <span>Apoio para cantar</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="musica">Nome da Música *</label>
+                <input type="text" id="musica" placeholder="Ex: Bohemian Rhapsody" required />
+            </div>
+            <div class="form-group">
+                <label for="artista">Artista / Banda *</label>
+                <input type="text" id="artista" placeholder="Ex: Queen" required />
+            </div>
+            <div class="form-group">
+                <label for="link">Link da Música (YouTube / Spotify)</label>
+                <div class="link-search-row">
+                    <input type="url" id="link" placeholder="https://youtu.be/..." />
+                    <button type="button" class="btn-search" id="btnBuscarYT">🔍 Buscar</button>
+                </div>
+                <div class="search-status" id="searchStatus"></div>
+                <div class="results-list" id="resultsList"></div>
+            </div>
+            <button type="submit" class="btn" id="btnSubmit">➕ Entrar na fila</button>
+        </form>
+        <button type="button" class="btn-secondary" onclick="window.location.href='apresentacao.html'">
+            Fila do Karaoke
+        </button>
+        <div class="success-msg" id="successMsg">
+            <div class="icon">✅</div>
+            <div class="text">Você está na fila!</div>
+            <div class="sub">Aguardando sua vez de cantar 🎤</div>
+        </div>
+    </div>
+    <div class="footer">Dados sincronizados em tempo real</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+    // ============================================================
+    // 🔥 CONFIGURAÇÃO DO FIREBASE
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+        authDomain: "karaokevvp.firebaseapp.com",
+        projectId: "karaokevvp",
+        storageBucket: "karaokevvp.firebasestorage.app",
+        messagingSenderId: "938258818805",
+        appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const COLLECTION = 'karaoke_fila';
+    const LOCK_COLLECTION = 'dispositivos';
+    const CONFIG_PATH = 'config/disponibilidade';
+    // ============================================================
+    // 📡 COLEÇÃO ESPELHADA (Fase 1)
+    // Enxuta, só com dados de exibição. A tela Apresentação lê SOMENTE
+    // esta coleção (pequena por natureza: ~15 registros).
+    // Quando a Fila marcar como lido (done: true), este espelho é EXCLUÍDO.
+    // ============================================================
+    const MIRROR_COLLECTION = 'karaoke_fila_exibicao';
+    // ============================================================
+    // 🔑 USUÁRIO MASTER (NOVO)
+    // ------------------------------------------------------------
+    // O usuário master (logado autorizado) PULA as validações de
+    // device (fingerprint) E de nome do cantor — pode incluir várias
+    // vezes no mesmo aparelho e nomes repetidos.
+    // Visitantes NÃO logados continuam com as duas validações ativas.
+    //
+    // Como configurar o master:
+    // 1) Lista de UIDs: cole o UID da conta em UIDS_SEM_FINGERPRINT.
+    //    Console Firebase → Authentication → Usuários → ⋮ → Copy UID.
+    // 2) OU qualquer usuário com documento em permissoes/{uid}
+    //    (padrão administrativo já usado no projeto) também é master.
+    // ============================================================
+    const UIDS_SEM_FINGERPRINT = [
+        // Ex.: 'AbC123def456ghi789',  <-- UID do operador/master
+    ];
+    async function usuarioPodeIgnorarFingerprint() {
+        try {
+            const user = firebase.auth().currentUser;
+            if (!user) return false;
+            // Critério 1: UID listado explicitamente
+            if (UIDS_SEM_FINGERPRINT.includes(user.uid)) return true;
+            // Critério 2: usuário com permissões registradas (admin/operador)
+            const doc = await db.collection('permissoes').doc(user.uid).get();
+            if (doc.exists) return true;
+            return false;
+        } catch {
+            return false; // em caso de erro, mantém a validação normal
+        }
+    }
+    // ===== DOM =====
+    const form        = document.getElementById('formAdd');
+    const formCard    = document.getElementById('formCard');
+    const inputNome   = document.getElementById('nome');
+    const inputMusica = document.getElementById('musica');
+    const inputArtista = document.getElementById('artista');
+    const inputLink   = document.getElementById('link');
+    const inputApoio  = document.getElementById('apoioCantar');
+    const btnSubmit   = document.getElementById('btnSubmit');
+    const successMsg  = document.getElementById('successMsg');
+    const closedMsg   = document.getElementById('closedMsg');
+    const closedSub   = document.getElementById('closedSub');
+    const statusBar   = document.getElementById('statusBar');
+    const statusDot   = document.getElementById('statusDot');
+    const statusText  = document.getElementById('statusText');
+    let disponivel = true;
+    let toastTimer = null;
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+    // ============================================================
+    // 🛡️ FINGERPRINT DO DISPOSITIVO
+    // ============================================================
+    const FP_STORAGE_KEY = 'karaoke_fp_device_id_v1';
+    function gerarUUID() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+    }
+    // ID persistente do dispositivo (estável no mesmo navegador do celular)
+    function getDeviceId() {
+        try {
+            let id = localStorage.getItem(FP_STORAGE_KEY);
+            if (!id) {
+                id = gerarUUID();
+                localStorage.setItem(FP_STORAGE_KEY, id);
+            }
+            return id;
+        } catch {
+            return gerarUUID(); // sem persistência (ex.: modo anônimo)
+        }
+    }
+    // Hash FNV-1a simples, sem dependências externas
+    function hashFingerprint(str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = Math.imul(h, 0x01000193);
+        }
+        return (h >>> 0).toString(36);
+    }
+    // Características estáveis do dispositivo/navegador
+    function getDeviceFeatures() {
+        const nav = navigator;
+        return [
+            nav.userAgent,
+            nav.language || '',
+            (nav.languages || []).join(','),
+            Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+            screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+            window.devicePixelRatio || 1,
+            nav.platform || '',
+            nav.hardwareConcurrency || '',
+            nav.deviceMemory || '',
+            nav.maxTouchPoints || 0
+        ].join('|');
+    }
+    // "Impressão" do motor de renderização do navegador (canvas)
+    function getCanvasFingerprint() {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 240;
+            canvas.height = 60;
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(0, 0, 240, 60);
+            ctx.fillStyle = '#fff';
+            ctx.fillText('KaraokeVP::fp', 2, 2);
+            return canvas.toDataURL();
+        } catch {
+            return '';
+        }
+    }
+    // Fingerprint estável: hash das características (independe do localStorage)
+    function getDeviceFingerprint() {
+        const base = getDeviceFeatures() + '|' + getCanvasFingerprint();
+        return hashFingerprint(base);
+    }
+    // ============================================================
+    // 🔍 VERIFICA SE O DISPOSITIVO JÁ TEM CADASTRO ATIVO NA FILA
+    // Regra: bloqueia enquanto existir registro com done === false.
+    // Quando o registro for marcado como "Já cantou" (done: true),
+    // o dispositivo fica liberado para um novo cadastro.
+    // ============================================================
+    async function getRegistroAtivoDispositivo() {
+        const deviceId = getDeviceId();
+        const fp = getDeviceFingerprint();
+        const encontrados = new Map();
+        try {
+            const snap = await db.collection(COLLECTION)
+                .where('deviceId', '==', deviceId)
+                .get();
+            snap.docs.forEach((d) => encontrados.set(d.id, d));
+        } catch (e) {
+            console.error('Erro ao consultar por deviceId:', e);
+        }
+        try {
+            const snap = await db.collection(COLLECTION)
+                .where('deviceFingerprint', '==', fp)
+                .get();
+            snap.docs.forEach((d) => encontrados.set(d.id, d));
+        } catch (e) {
+            console.error('Erro ao consultar por fingerprint:', e);
+        }
+        for (const d of encontrados.values()) {
+            if (d.data().done === false) return d;
+        }
+        return null;
+    }
+    // ===== DATAS E HORAS (horário local) =====
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dia}`;
+    }
+    function formatTime(d) {
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    // ===== LIMITE DIÁRIO DINÂMICO =====
+    async function getLimiteDiario() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (doc.exists && doc.data().limiteDiario) return Number(doc.data().limiteDiario);
+        } catch {}
+        return 60;
+    }
+    // ===== VERIFICA DISPONIBILIDADE =====
+    async function verificarDisponibilidade() {
+        try {
+            const doc = await db.doc(CONFIG_PATH).get();
+            if (!doc.exists) return { aberto: true, msg: '' };
+            const cfg = doc.data();
+            if (cfg.ativo === false) return { aberto: false, msg: 'Cadastros encerrados pelo organizador.' };
+            const dataInicio = cfg.dataInicio || '';
+            const dataFim = cfg.dataFim || '';
+            const horarioInicio = cfg.horarioInicio || '';
+            const horarioFim = cfg.horarioFim || '';
+            if (!dataInicio || !dataFim || !horarioInicio || !horarioFim) return { aberto: true, msg: '' };
+            const now = new Date();
+            const hoje = formatDate(now);
+            const agora = formatTime(now);
+            if (hoje < dataInicio || hoje > dataFim) {
+                return { aberto: false, msg: `Fora do período do evento (${dataInicio} a ${dataFim})` };
+            }
+            const cruzaMeiaNoite = horarioFim < horarioInicio;
+            if (dataInicio === dataFim) {
+                const dentro = agora >= horarioInicio && agora <= horarioFim;
+                return dentro
+                    ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                    : { aberto: false, msg: `Evento hoje das ${horarioInicio} às ${horarioFim}` };
+            }
+            if (hoje === dataInicio) {
+                if (agora < horarioInicio) return { aberto: false, msg: `Abertura hoje às ${horarioInicio}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            if (hoje === dataFim) {
+                if (agora > horarioFim) return { aberto: false, msg: `Encerramento hoje às ${horarioFim}` };
+                return { aberto: true, msg: `Fila aberta até ${horarioFim}` };
+            }
+            const dentro = cruzaMeiaNoite
+                ? (agora >= horarioInicio || agora <= horarioFim)
+                : (agora >= horarioInicio && agora <= horarioFim);
+            return dentro
+                ? { aberto: true, msg: `Fila aberta até ${horarioFim}` }
+                : { aberto: false, msg: `Aberto diariamente das ${horarioInicio} às ${horarioFim}` };
+        } catch {
+            return { aberto: true, msg: '' };
+        }
+    }
+    // ===== ATUALIZA A TELA SEGUNDO A DISPONIBILIDADE =====
+    async function atualizarStatus() {
+        const res = await verificarDisponibilidade();
+        disponivel = res.aberto;
+        if (res.aberto) {
+            formCard.style.display = 'block';
+            closedMsg.style.display = 'none';
+            statusBar.className = 'status-bar open';
+            statusText.textContent = res.msg || '🟢 Fila aberta';
+            statusDot.className = 'status-dot online';
+        } else {
+            formCard.style.display = 'none';
+            closedMsg.style.display = 'block';
+            closedSub.textContent = res.msg;
+            statusBar.className = 'status-bar closed';
+            statusText.textContent = '🔴 Fila fechada';
+            statusDot.className = 'status-dot offline';
+        }
+    }
+    // ===== CONTADOR DIÁRIO =====
+    function getTodayStr() {
+        return new Date().toISOString().slice(0, 10);
+    }
+    async function getDailyCount() {
+        try {
+            const snapshot = await db.collection(COLLECTION)
+                .where('dataCadastro', '==', getTodayStr())
+                .get();
+            return snapshot.size;
+        } catch { return 0; }
+    }
+    // ===== VERIFICA SE PESSOA JÁ ESTÁ NA FILA =====
+    async function pessoaJaNaFila(nome) {
+        const nomeLower = nome.trim().toLowerCase();
+        try {
+            const snapshot = await db.collection(COLLECTION)
+                .where('nomeLower', '==', nomeLower)
+                .where('done', '==', false)
+                .get();
+            return !snapshot.empty;
+        } catch { return false; }
+    }
+    // ===== ADICIONAR =====
+    async function addSinger(nome, musica, artista, link, apoio) {
+        // 1. Bloqueia se estiver fora do horário
+        const res = await verificarDisponibilidade();
+        if (!res.aberto) {
+            showToast('⏰ Fora do horário de funcionamento.');
+            atualizarStatus();
+            return false;
+        }
+        // 2. Limite diário dinâmico
+        const limite = await getLimiteDiario();
+        const dailyCount = await getDailyCount();
+        if (dailyCount >= limite) {
+            showToast(`⚠️ Limite de ${limite} músicas por dia atingido! Volte amanhã.`);
+            return false;
+        }
+        // 🔑 NOVO: usuário master pula as validações de nome E de device
+        const ehMaster = await usuarioPodeIgnorarFingerprint();
+        // 3. Pessoa já está na fila? (master pula esta validação)
+        if (!ehMaster) {
+            const jaEsta = await pessoaJaNaFila(nome);
+            if (jaEsta) {
+                showToast(`⚠️ ${nome.trim()} já está na fila. Aguarde sua vez.`);
+                return false;
+            }
+        }
+        // 4. Este celular já tem cadastro ativo na fila? (master pula esta validação)
+        if (!ehMaster) {
+            const regAtivo = await getRegistroAtivoDispositivo();
+            if (regAtivo) {
+                showToast('⚠️ Você já está na fila. Aguarde sua vez de cantar.');
+                return false;
+            }
+        }
+        // 5. Cria cadastro + espelho + bloqueio do dispositivo de forma ATÔMICA.
+        const deviceId = getDeviceId();
+        const fp = getDeviceFingerprint();
+        try {
+            const batch = db.batch();
+            // 1) Registro completo na base FULL (histórico + inteligência de negócio)
+            const filaRef = db.collection(COLLECTION).doc();
+            batch.set(filaRef, {
+                nome: nome.trim(),
+                nomeLower: nome.trim().toLowerCase(),
+                telefone: '',
+                musica: musica.trim(),
+                artista: artista.trim(),
+                link: link.trim(),
+                apoioCantar: apoio,
+                deviceId: deviceId,
+                deviceFingerprint: fp,
+                done: false,
+                dataCadastro: getTodayStr(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // 2) ESPELHO ENXUTO (Fase 1)
+            //    Mesmo ID do registro FULL, apenas campos de exibição.
+            const espelhoRef = db.collection(MIRROR_COLLECTION).doc(filaRef.id);
+            batch.set(espelhoRef, {
+                nome: nome.trim(),
+                musica: musica.trim(),
+                artista: artista.trim(),
+                apoioCantar: apoio,
+                dataCadastro: getTodayStr(),
+                done: false,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // 3) Bloqueio do dispositivo
+            const lockRef = db.collection(LOCK_COLLECTION).doc(deviceId);
+            batch.set(lockRef, {
+                deviceFingerprint: fp,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await batch.commit();
+            return true;
+        } catch (error) {
+            console.error('Erro ao adicionar:', error);
+            showToast('⚠️ Este celular já está na fila. Aguarde sua vez de cantar.');
+            return false;
+        }
+    }
+    // ===== FORM SUBMIT =====
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!disponivel) {
+            showToast('⏰ Fora do horário de funcionamento.');
+            return;
+        }
+        const nome    = inputNome.value.trim();
+        const musica  = inputMusica.value.trim();
+        const artista = inputArtista.value.trim();
+        const link    = inputLink.value.trim();
+        const apoio   = inputApoio.checked;
+        if (!nome || !musica || !artista) {
+            showToast('⚠️ Preencha nome, música e artista.');
+            return;
+        }
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '⏳ Enviando...';
+        const added = await addSinger(nome, musica, artista, link, apoio);
+        if (added) {
+            form.style.display = 'none';
+            successMsg.style.display = 'block';
+        } else {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = '➕ Entrar na fila';
+        }
+    });
+    // ============================================================
+    // 🔍 BUSCADOR DE VÍDEO KARAOKÊ NO YOUTUBE
+    // Query: "<música> <artista> karaoke" → YouTube Data API v3
+    // Preenche o campo "link" com o vídeo escolhido pelo usuário.
+    // A busca NÃO toca o Firestore (não aumenta o pico de leituras).
+    // ============================================================
+    const YT_API_KEY = 'COLE_SUA_CHAVE_AQUI'; // ver passo 3
+    const YT_MAX_RESULTS = 5;
+
+    const btnBuscarYT = document.getElementById('btnBuscarYT');
+    const searchStatus = document.getElementById('searchStatus');
+    const resultsList = document.getElementById('resultsList');
+
+    function setSearchStatus(msg, tipo) {
+        searchStatus.textContent = msg || '';
+        searchStatus.className = 'search-status' + (tipo ? ' ' + tipo : '');
+    }
+
+    async function buscarVideosKaraoke(musica, artista) {
+        const query = encodeURIComponent(`${musica} ${artista} karaoke`);
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${YT_MAX_RESULTS}&relevanceLanguage=pt&q=${query}&key=${YT_API_KEY}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!resp.ok || data.error) {
+            const code = data.error && data.error.errors && data.error.errors[0].reason;
+            if (code === 'quotaExceeded' || code === 'dailyLimitExceeded') {
+                throw new Error('Limite diário de buscas do YouTube atingido. Tente amanhã ou cole o link manualmente.');
+            }
+            if (code === 'keyInvalid') {
+                throw new Error('Chave da API do YouTube inválida. Confira YT_API_KEY.');
+            }
+            if (code === 'ipRefererBlocked') {
+                throw new Error('Domínio não autorizado na chave da API. Verifique as restrições no Google Cloud.');
+            }
+            throw new Error('Erro na busca: ' + (data.error.message || 'tente novamente.'));
+        }
+        return (data.items || []).map((item) => ({
+            id: item.id.videoId,
+            titulo: item.snippet.title,
+            canal: item.snippet.channelTitle,
+            thumb: item.snippet.thumbnails.default ? item.snippet.thumbnails.default.url : '',
+            ehKaraoke: /karaok/i.test(item.snippet.title) // pega "karaoke" e "karaokê"
+        }));
+    }
+
+    function renderResultados(videos) {
+        resultsList.innerHTML = '';
+        // Versões com "karaoke" no título aparecem primeiro
+        videos.sort((a, b) => Number(b.ehKaraoke) - Number(a.ehKaraoke));
+        videos.forEach((v) => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+
+            const thumb = document.createElement('img');
+            thumb.className = 'thumb';
+            thumb.src = v.thumb || '';
+            thumb.alt = '';
+
+            const info = document.createElement('div');
+            info.className = 'info';
+            const titulo = document.createElement('div');
+            titulo.className = 'titulo';
+            titulo.textContent = v.titulo;
+            const canal = document.createElement('div');
+            canal.className = 'canal';
+            canal.textContent = v.canal;
+            info.appendChild(titulo);
+            info.appendChild(canal);
+
+            const badge = document.createElement('span');
+            badge.className = 'badge-karaoke' + (v.ehKaraoke ? ' show' : '');
+            badge.textContent = 'KARAOKÊ';
+
+            item.appendChild(thumb);
+            item.appendChild(info);
+            item.appendChild(badge);
+
+            item.addEventListener('click', () => {
+                inputLink.value = 'https://www.youtube.com/watch?v=' + v.id;
+                resultsList.innerHTML = '';
+                resultsList.classList.remove('show');
+                setSearchStatus('✅ Link preenchido: ' + v.titulo, 'info');
+                showToast('Link do vídeo adicionado!');
+            });
+            resultsList.appendChild(item);
+        });
+        resultsList.classList.add('show');
+    }
+
+    btnBuscarYT.addEventListener('click', async () => {
+        const musica = inputMusica.value.trim();
+        const artista = inputArtista.value.trim();
+        if (!musica || !artista) {
+            showToast('⚠️ Preencha música e artista antes de buscar.');
+            setSearchStatus('Preencha Nome da Música e Artista para buscar.', 'error');
+            return;
+        }
+        if (!YT_API_KEY || YT_API_KEY.startsWith('COLE_SUA')) {
+            setSearchStatus('⚠️ Configure a YT_API_KEY no código antes de usar.', 'error');
+            return;
+        }
+        btnBuscarYT.disabled = true;
+        btnBuscarYT.textContent = '⏳ Buscando...';
+        resultsList.classList.remove('show');
+        setSearchStatus('Buscando versão karaokê...', 'loading');
+        try {
+            const videos = await buscarVideosKaraoke(musica, artista);
+            if (!videos.length) {
+                setSearchStatus('Nenhum vídeo encontrado. Tente outro nome ou cole o link manualmente.', 'error');
+            } else {
+                setSearchStatus('', '');
+                renderResultados(videos);
+            }
+        } catch (e) {
+            setSearchStatus('⚠️ ' + e.message, 'error');
+        } finally {
+            btnBuscarYT.disabled = false;
+            btnBuscarYT.textContent = '🔍 Buscar';
+        }
+    });
+    // ===== INICIA =====
+    atualizarStatus();
+    setInterval(atualizarStatus, 120000);
+</script>
+</body>
+</html>
