@@ -1,0 +1,69 @@
+/* ===== CURTIDAS ===== */
+.like-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(212, 140, 72, 0.10);
+  border: 1px solid rgba(212, 140, 72, 0.28);
+  color: var(--txt);
+  border-radius: 999px;
+  padding: 8px 16px 8px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.like-btn:hover:not(:disabled) {
+  background: rgba(212, 140, 72, 0.18);
+  border-color: rgba(212, 140, 72, 0.48);
+  transform: translateY(-1px);
+}
+
+.like-btn:active:not(:disabled) { transform: scale(0.97); }
+.like-btn:disabled { cursor: default; }
+
+.like-icon {
+  display: inline-block;
+  font-size: 17px;
+  line-height: 1;
+  color: #8A8279;
+  transition: color 0.2s ease;
+}
+
+.like-count {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--copper);
+}
+
+.like-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--txt-3);
+}
+
+.like-btn.liked {
+  background: rgba(212, 140, 72, 0.20);
+  border-color: rgba(212, 140, 72, 0.55);
+}
+
+.like-btn.liked .like-icon {
+  color: var(--copper);
+  animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}

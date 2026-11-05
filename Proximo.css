@@ -1,0 +1,8 @@
+.next-flag {
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--copper);
+}
