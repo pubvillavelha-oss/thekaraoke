@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VillaKê Karaokê — Catálogo de Músicas</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #1a1816;
+    --card: #272320;
+    --card-2: #2E2925;
+    --line-soft: rgba(255, 255, 255, 0.05);
+    --copper: #d48c48;
+    --txt: #fdfdfd;
+    --txt-2: #B9B2AA;
+    --txt-3: #8A8279;
+    --green: #4ade80;
+    --red: #f43f5e;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background:
+      radial-gradient(110% 46% at 50% -8%, rgba(212, 140, 72, 0.10) 0%, rgba(26, 24, 22, 0) 58%),
+      var(--bg);
+    min-height: 100vh;
+    color: var(--txt);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1180px; width: 100%; }
+
+  /* ===== HEADER ===== */
+  .header { text-align: center; margin-bottom: 20px; }
+  .header .brand-logo { display: block; margin: 0 auto; width: auto; max-width: 172px; height: auto; }
+  .brand-fallback {
+    display: none; font-size: 26px; font-weight: 800;
+    letter-spacing: 0.06em; color: var(--copper); line-height: 1.1;
+  }
+  .brand-fallback small {
+    display: block; font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.42em; color: #F5E9DD; margin-top: 7px;
+  }
+  .header .sub {
+    margin-top: 12px; font-size: 10.5px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--txt-3); font-weight: 600;
+  }
+
+  /* ===== TOOLBAR ===== */
+  .toolbar {
+    position: sticky; top: 0; z-index: 30; padding: 10px 0 12px;
+    background: linear-gradient(180deg, rgba(26,24,22,0.98) 72%, rgba(26,24,22,0.86) 100%);
+    backdrop-filter: blur(10px);
+  }
+  .search-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--line-soft);
+    border-radius: 14px; padding: 11px 14px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .search-wrap:focus-within {
+    border-color: rgba(212,140,72,0.45);
+    box-shadow: 0 0 0 3px rgba(212,140,72,0.12);
+  }
+  .search-icon { flex-shrink: 0; display: flex; color: var(--txt-3); }
+  .search-input {
+    flex: 1; min-width: 0; background: transparent; border: 0; outline: 0;
+    color: var(--txt); font-family: inherit; font-size: 14.5px;
+  }
+  .search-input::placeholder { color: var(--txt-3); }
+  .clear-btn {
+    flex-shrink: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--line-soft);
+    color: var(--txt-2); width: 24px; height: 24px; border-radius: 50%;
+    font-size: 14px; line-height: 1; cursor: pointer; font-family: inherit;
+  }
+  .clear-btn:hover { background: rgba(255,255,255,0.12); }
+
+  .chips {
+    display: flex; gap: 8px; margin-top: 10px;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; background: transparent; border: 1px solid var(--line-soft);
+    color: var(--txt-2); border-radius: 999px; padding: 7px 14px;
+    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .chip:hover { border-color: rgba(212,140,72,0.3); }
+  .chip.active {
+    background: rgba(212,140,72,0.16); border-color: rgba(212,140,72,0.5); color: var(--copper);
+  }
+
+  /* ===== META ===== */
+  .meta-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin: 6px 0 14px; flex-wrap: wrap;
+  }
+  .count-pill {
+    font-size: 12px; color: var(--txt-2); background: rgba(255,255,255,0.045);
+    border: 1px solid var(--line-soft); padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+  }
+  .status {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; letter-spacing: .03em; color: var(--txt-3);
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--txt-3);
+    transition: background .25s ease, box-shadow .25s ease;
+  }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 0 3px rgba(74,222,128,0.14); }
+  .status-dot.offline { background: var(--red); box-shadow: 0 0 0 3px rgba(244,63,94,0.14); }
+
+  .refresh-btn {
+    background: transparent; border: 1px solid var(--line-soft); color: var(--txt-3);
+    width: 22px; height: 22px; border-radius: 50%; font-size: 12px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-family: inherit;
+    transition: color .2s ease, border-color .2s ease;
+  }
+  .refresh-btn:hover { color: var(--copper); border-color: rgba(212,140,72,0.4); }
+  .refresh-btn.spinning { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== GRID ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    cursor: pointer;
+    transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+  }
+  .card:hover {
+    border-color: rgba(212,140,72,0.34);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.46);
+  }
+
+  .cover {
+    position: relative; display: block; width: 100%;
+    padding: 0; border: 0; background: #12100E;
+    aspect-ratio: 16 / 9; overflow: hidden;
+    cursor: pointer; font-family: inherit;
+  }
+  .cover img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .6s cubic-bezier(.2,.7,.3,1), filter .35s ease;
+  }
+  .card:hover .cover img { transform: scale(1.08); filter: saturate(1.06) brightness(1.04); }
+  .cover-shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 46%, rgba(0,0,0,0.62) 100%);
+  }
+  .cover-ph {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #5A524A;
+    background: linear-gradient(135deg, #221E1A, #191614);
+  }
+  .play {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%,-50%) scale(.85);
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--copper); color: #1a1512;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; padding-left: 3px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+  }
+  .card:hover .play { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+
+  .badge-dur {
+    position: absolute; right: 9px; bottom: 9px;
+    font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    color: #fff; background: rgba(10,9,8,0.78);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 2px 7px; border-radius: 7px; backdrop-filter: blur(4px);
+  }
+  .badge-views {
+    position: absolute; left: 9px; bottom: 9px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; color: #EDE7E0;
+    background: rgba(10,9,8,0.7);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 2px 8px; border-radius: 7px; backdrop-filter: blur(4px);
+  }
+
+  .card-body { padding: 13px 14px 15px; display: flex; flex-direction: column; gap: 4px; }
+  .card-title {
+    font-size: 14.5px; font-weight: 700; line-height: 1.32; color: var(--txt);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-artist {
+    font-size: 12.5px; color: var(--txt-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-stats {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 7px; padding-top: 9px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 11.5px; color: var(--txt-3);
+  }
+  .card-stats span { display: inline-flex; align-items: center; gap: 5px; }
+  .card-stats .heart { color: rgba(212,140,72,0.85); }
+
+  /* ===== SKELETON ===== */
+  .skel { background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
+  .sk-img {
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(90deg,#221E1A 25%,#2B2723 50%,#221E1A 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
+  }
+  .sk-line {
+    height: 10px; border-radius: 6px; margin: 10px 14px;
+    background: linear-gradient(90deg,#221E1A 25%,#2B2723 50%,#221E1A 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
+  }
+  .sk-line:last-child { margin-bottom: 16px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ===== VAZIO ===== */
+  .empty {
+    text-align: center; padding: 54px 20px; color: var(--txt-3);
+    border: 1px dashed var(--line-soft); border-radius: var(--radius);
+  }
+  .empty .e-icon { font-size: 34px; opacity: .5; }
+  .empty .e-title { margin-top: 12px; font-size: 15px; font-weight: 700; color: var(--txt-2); }
+  .empty .e-sub { margin-top: 6px; font-size: 13px; line-height: 1.55; }
+  .empty code { color: var(--copper); font-size: 12.5px; }
+
+  /* ===== AÇÕES DE RODAPÉ DA LISTA ===== */
+  .load-wrap { padding: 24px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .btn-more {
+    display: block; margin: 0 auto; background: transparent;
+    border: 1px solid rgba(212,140,72,0.34); color: var(--copper);
+    padding: 11px 26px; border-radius: 12px; font-family: inherit;
+    font-size: 13.5px; font-weight: 700; cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .btn-more:hover { background: rgba(212,140,72,0.12); border-color: rgba(212,140,72,0.55); }
+  .btn-more:disabled { opacity: .5; cursor: default; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--line-soft);
+    color: var(--txt-2); padding: 9px 18px; border-radius: 10px;
+    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .btn-ghost:hover { border-color: rgba(212,140,72,0.35); color: var(--copper); }
+
+  .sentinel { height: 1px; width: 100%; }
+
+  /* ===== RODAPÉ ===== */
+  .footer {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 22px; font-size: 11.5px; letter-spacing: .04em; color: var(--txt-3);
+  }
+  .footer .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  /* ===== PLAYER ===== */
+  .player-overlay {
+    position: fixed; inset: 0; background: rgba(10,9,8,0.90);
+    backdrop-filter: blur(6px); display: none; align-items: center;
+    justify-content: center; z-index: 200; padding: 18px;
+  }
+  .player-overlay.active { display: flex; }
+  .player {
+    position: relative; width: 100%; max-width: 820px;
+    background: var(--card); border: 1px solid var(--line-soft);
+    border-radius: 18px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,0.6);
+  }
+  .player-frame { position: relative; aspect-ratio: 16 / 9; background: #000; }
+  .player-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .player-close {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(10,9,8,0.72); border: 1px solid rgba(255,255,255,0.14);
+    color: #fff; font-size: 18px; line-height: 1; cursor: pointer; font-family: inherit;
+  }
+  .player-close:hover { background: rgba(10,9,8,0.92); }
+  .player-info {
+    padding: 15px 18px 17px; display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 14px;
+  }
+  .player-info .p-title { font-size: 15px; font-weight: 700; color: var(--txt); line-height: 1.3; }
+  .player-info .p-artist { font-size: 12.5px; color: var(--txt-3); margin-top: 3px; }
+  .player-info .p-meta { font-size: 11.5px; color: var(--txt-3); margin-top: 6px; }
+  .player-info .p-link {
+    flex-shrink: 0; font-size: 12px; font-weight: 700; letter-spacing: .03em;
+    color: var(--copper); text-decoration: none;
+    border: 1px solid rgba(212,140,72,0.34); padding: 9px 15px;
+    border-radius: 10px; white-space: nowrap;
+  }
+  .player-info .p-link:hover { background: rgba(212,140,72,0.14); }
+
+  /* ===== RESPONSIVO ===== */
+  @media (max-width: 680px) {
+    .container { max-width: 540px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
+    .card-title { font-size: 13px; }
+    .card-artist { font-size: 11.5px; }
+    .card-body { padding: 10px 11px 12px; }
+    .card-stats { font-size: 10.5px; gap: 9px; }
+    .header .brand-logo { max-width: 148px; }
+    .player-info { flex-direction: column; gap: 10px; }
+    .player-info .p-link { width: 100%; text-align: center; }
+  }
+  @media (hover: none) {
+    .play { opacity: 1; transform: translate(-50%,-50%) scale(.92); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <img src="LOGO_HR.png" alt="VillaKê Karaokê" class="brand-logo"
+         onerror="this.style.display='none';document.getElementById('brandFallback').style.display='block';" />
+    <div class="brand-fallback" id="brandFallback">
+      VILLAKÊ
+      <small>KARAOKÊ</small>
+    </div>
+    <div class="sub">Catálogo de músicas</div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="20" y1="20" x2="16.2" y2="16.2"></line>
+        </svg>
+      </span>
+      <input id="search" class="search-input" type="text" autocomplete="off"
+             placeholder="Buscar por música ou artista" aria-label="Buscar no catálogo" />
+      <button id="clearSearch" class="clear-btn" type="button" hidden aria-label="Limpar busca">×</button>
+    </div>
+
+    <div class="chips" id="sortChips">
+      <button class="chip active" type="button" data-sort="views">Mais vistas</button>
+      <button class="chip" type="button" data-sort="likes">Mais curtidas</button>
+      <button class="chip" type="button" data-sort="az">A–Z</button>
+      <button class="chip" type="button" data-sort="artist">Artista</button>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <span class="count-pill" id="countPill">Carregando…</span>
+    <span class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Conectando…</span>
+      <button class="refresh-btn" id="btnRefresh" type="button" title="Recarregar" aria-label="Recarregar">↻</button>
+    </span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="empty" id="empty" hidden>
+    <div class="e-icon">♪</div>
+    <div class="e-title" id="emptyTitle">Nenhuma música encontrada</div>
+    <div class="e-sub" id="emptySub">Tente outro termo de busca.</div>
+  </div>
+
+  <div class="load-wrap" id="loadWrap" hidden>
+    <button class="btn-more" id="btnMore" type="button">Carregar mais</button>
+    <button class="btn-ghost" id="btnSearchAll" type="button" hidden>Buscar em todo o catálogo</button>
+    <div class="sentinel" id="sentinel"></div>
+  </div>
+
+  <div class="footer">
+    <span class="dot"></span>
+    <span>Dados sincronizados em tempo real</span>
+  </div>
+
+</div>
+
+<div class="player-overlay" id="playerOverlay">
+  <div class="player">
+    <button class="player-close" id="playerClose" type="button" aria-label="Fechar">×</button>
+    <div class="player-frame">
+      <iframe id="playerFrame" title="Player"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen></iframe>
+    </div>
+    <div class="player-info">
+      <div>
+        <div class="p-title" id="playerTitle"></div>
+        <div class="p-artist" id="playerArtist"></div>
+        <div class="p-meta" id="playerMeta"></div>
+      </div>
+      <a class="p-link" id="playerLink" href="#" target="_blank" rel="noopener" hidden>Abrir no YouTube</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FIREBASE — mesmo projeto da fila do karaokê
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+  authDomain: "karaokevvp.firebaseapp.com",
+  projectId: "karaokevvp",
+  storageBucket: "karaokevvp.firebasestorage.app",
+  messagingSenderId: "938258818805",
+  appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ============================================================
+// PARÂMETROS
+// ============================================================
+const CATALOGO = 'catalogo';
+const PAGE_SIZE = 24;          // documentos por página
+const MAX_AUTO_PAGES = 4;      // páginas auto-carregadas durante a busca
+const MAX_SEARCH_PAGES = 20;   // teto do "buscar em todo o catálogo"
+
+// Campos usados no orderBy — precisam existir nos documentos
+const SORTS = {
+  views:  { field: 'views',  dir: 'desc' },
+  likes:  { field: 'likes',  dir: 'desc' },
+  az:     { field: 'titulo', dir: 'asc'  },
+  artist: { field: 'canal',  dir: 'asc'  }
+};
+
+// ===== DOM =====
+const $ = (id) => document.getElementById(id);
+const grid = $('grid'), emptyEl = $('empty'), emptyTitle = $('emptyTitle'), emptySub = $('emptySub');
+const loadWrap = $('loadWrap'), btnMore = $('btnMore'), btnSearchAll = $('btnSearchAll'), sentinel = $('sentinel');
+const countPill = $('countPill'), statusDot = $('statusDot'), statusText = $('statusText');
+const btnRefresh = $('btnRefresh');
+const searchInput = $('search'), clearBtn = $('clearSearch'), sortChips = $('sortChips');
+const playerOverlay = $('playerOverlay'), playerFrame = $('playerFrame');
+const playerTitle = $('playerTitle'), playerArtist = $('playerArtist');
+const playerMeta = $('playerMeta'), playerLink = $('playerLink'), playerClose = $('playerClose');
+
+// ===== ESTADO =====
+let items = [];            // músicas já carregadas (ordem do servidor)
+let byKey = new Map();     // videoId -> música
+let lastDoc = null;        // cursor do startAfter
+let hasMore = true;
+let loading = false;
+let sortMode = 'views';
+let term = '';
+let pagesLoaded = 0;
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function norm(v) {
+  return String(v == null ? '' : v)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function fmtNum(n) {
+  const v = Number(n) || 0;
+  if (v >= 1e9) return (v / 1e9).toFixed(1).replace('.', ',') + ' bi';
+  if (v >= 1e6) return (v / 1e6).toFixed(1).replace('.', ',') + ' mi';
+  if (v >= 1e3) return (v / 1e3).toFixed(1).replace('.', ',') + ' mil';
+  return String(v);
+}
+
+function mmss(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+// duracao no catálogo é segundos (number)
+function fmtDuration(v) {
+  if (v === '' || v === null || v === undefined) return '';
+  if (typeof v === 'number') return v > 0 ? mmss(v) : '';
+  const s = String(v).trim();
+  if (/^\d+$/.test(s)) return Number(s) > 0 ? mmss(Number(s)) : '';
+  const iso = s.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (iso) {
+    const t = (+iso[1] || 0) * 3600 + (+iso[2] || 0) * 60 + (+iso[3] || 0);
+    return t ? mmss(t) : '';
+  }
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s;
+  return '';
+}
+
+// Capa grande com fallback em cascata
+function coverSet(s) {
+  const vid = s.videoId;
+  const promote = (u) => String(u || '').replace(
+    /\/(default|mqdefault|sddefault|hqdefault|maxresdefault)\.(jpg|jpeg|webp|png)/i,
+    '/maxresdefault.jpg'
+  );
+
+  const src = s.thumbHd || promote(s.thumb) ||
+              (vid ? 'https://i.ytimg.com/vi/' + vid + '/maxresdefault.jpg' : '');
+  const fb  = vid ? 'https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg'
+                  : promote(s.thumb).replace('maxresdefault', 'hqdefault');
+  const fb2 = vid ? 'https://i.ytimg.com/vi/' + vid + '/mqdefault.jpg' : '';
+
+  return { src, fb, fb2 };
+}
+
+// ============================================================
+// MAPEAMENTO DO DOCUMENTO (schema da coleção catalogo)
+// ============================================================
+function fromCatalogDoc(docSnap) {
+  const data = docSnap.data() || {};
+  const videoId = String(data.videoId || docSnap.id || '').trim();
+
+  return {
+    key: videoId || docSnap.id,
+    docId: docSnap.id,
+    videoId,
+    titulo: String(data.titulo || '').trim() || 'Sem título',
+    canal: String(data.canal || '').trim() || 'Artista desconhecido',
+    thumb: String(data.thumb || '').trim(),
+    thumbHd: String(data.thumbHd || '').trim(),
+    views: Number(data.views) || 0,
+    likes: Number(data.likes) || 0,
+    duracao: fmtDuration(data.duracao)
+  };
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function skeletons(n) {
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    out += '<div class="skel"><div class="sk-img"></div>' +
+           '<div class="sk-line" style="width:76%"></div>' +
+           '<div class="sk-line" style="width:48%"></div></div>';
+  }
+  return out;
+}
+
+function cardHtml(s) {
+  const c = coverSet(s);
+  const dur = s.duracao ? '<span class="badge-dur">' + esc(s.duracao) + '</span>' : '';
+  const views = s.views ? '<span class="badge-views">▶ ' + esc(fmtNum(s.views)) + '</span>' : '';
+
+  const img = c.src
+    ? '<img src="' + esc(c.src) + '" alt="' + esc(s.titulo) + '" loading="lazy" decoding="async"' +
+      ' data-fb="' + esc(c.fb) + '" data-fb2="' + esc(c.fb2) + '" onerror="catalogCover(this)">'
+    : '<div class="cover-ph">♪</div>';
+
+  const stats = (s.views || s.likes)
+    ? '<div class="card-stats">' +
+        (s.views ? '<span>' + esc(fmtNum(s.views)) + ' views</span>' : '') +
+        (s.likes ? '<span><span class="heart">♥</span> ' + esc(fmtNum(s.likes)) + '</span>' : '') +
+      '</div>'
+    : '';
+
+  return '' +
+    '<article class="card" data-key="' + esc(s.key) + '" role="button" tabindex="0">' +
+      '<span class="cover">' +
+        img +
+        '<span class="cover-shade"></span>' +
+        '<span class="play">▶</span>' +
+        views + dur +
+      '</span>' +
+      '<div class="card-body">' +
+        '<h3 class="card-title">' + esc(s.titulo) + '</h3>' +
+        '<p class="card-artist">' + esc(s.canal) + '</p>' +
+        stats +
+      '</div>' +
+    '</article>';
+}
+
+// Fallback progressivo: maxres → hq → mq → placeholder
+window.catalogCover = function (img) {
+  const fb1 = img.getAttribute('data-fb');
+  const fb2 = img.getAttribute('data-fb2');
+
+  if (fb1 && img.getAttribute('src') !== fb1) {
+    img.setAttribute('src', fb1);
+    img.setAttribute('data-fb', '');
+    return;
+  }
+  if (fb2 && img.getAttribute('src') !== fb2) {
+    img.setAttribute('src', fb2);
+    img.setAttribute('data-fb2', '');
+    return;
+  }
+  img.removeAttribute('onerror');
+  if (img.parentNode) {
+    img.parentNode.insertAdjacentHTML('beforeend', '<div class="cover-ph">♪</div>');
+    img.parentNode.removeChild(img);
+  }
+};
+
+function filtered() {
+  const t = norm(term);
+  if (!t) return items;
+  return items.filter((s) => norm(s.titulo).includes(t) || norm(s.canal).includes(t));
+}
+
+function appendCards(list) {
+  if (!list.length) return;
+  grid.insertAdjacentHTML('beforeend', list.map(cardHtml).join(''));
+}
+
+function paint() {
+  const list = filtered();
+  grid.innerHTML = list.map(cardHtml).join('');
+  updateChrome(list.length);
+}
+
+function updateChrome(shownCount) {
+  const shown = (shownCount !== undefined) ? shownCount : filtered().length;
+  const searching = !!norm(term);
+
+  countPill.textContent = searching
+    ? shown + (shown === 1 ? ' resultado' : ' resultados') +
+      ' de ' + items.length + ' carregadas'
+    : items.length + (hasMore ? '+' : '') + (items.length === 1 ? ' música' : ' músicas');
+
+  const semResultado = shown === 0;
+
+  if (!items.length) {
+    emptyTitle.textContent = 'Catálogo vazio';
+    emptySub.innerHTML = 'Nenhum documento em <code>' + CATALOGO +
+      '</code>. Rode o backfill a partir de <code>karaoke_cache_youtube</code>.';
+    emptyEl.hidden = false;
+    loadWrap.hidden = true;
+    return;
+  }
+
+  if (semResultado) {
+    emptyTitle.textContent = 'Nenhuma música encontrada';
+    emptySub.textContent = 'Nenhum resultado entre as ' + items.length +
+      ' músicas carregadas. Use o botão abaixo para ampliar a busca.';
+    emptyEl.hidden = false;
+  } else {
+    emptyEl.hidden = true;
+  }
+
+  btnMore.hidden = !hasMore;
+  btnSearchAll.hidden = !(searching && hasMore && semResultado);
+  loadWrap.hidden = !(hasMore);
+}
+
+// ============================================================
+// PAGINAÇÃO
+// ============================================================
+function setStatus(state) {
+  statusDot.className = 'status-dot ' + state;
+  statusText.textContent = state === 'online' ? 'Sincronizado'
+    : state === 'offline' ? 'Offline' : 'Conectando…';
+}
+
+async function loadPage(reset) {
+  if (loading) return;
+  if (!reset && !hasMore) return;
+
+  loading = true;
+  if (reset) {
+    items = [];
+    byKey.clear();
+    lastDoc = null;
+    hasMore = true;
+    pagesLoaded = 0;
+    grid.innerHTML = skeletons(8);
+    emptyEl.hidden = true;
+    loadWrap.hidden = true;
+    setStatus('connecting');
+  } else {
+    btnMore.disabled = true;
+    btnMore.textContent = 'Carregando…';
+  }
+
+  const sort = SORTS[sortMode] || SORTS.views;
+
+  // orderBy + limit → primeira página
+  // startAfter(cursor) → próximas páginas
+  let query = db.collection(CATALOGO)
+    .orderBy(sort.field, sort.dir)
+    .limit(PAGE_SIZE);
+
+  if (!reset && lastDoc) query = query.startAfter(lastDoc);
+
+  try {
+    const snap = await query.get();
+    pagesLoaded++;
+
+    const fresh = [];
+    snap.forEach((docSnap) => {
+      const song = fromCatalogDoc(docSnap);
+      if (byKey.has(song.key)) return;   // proteção contra sobreposição de cursor
+      byKey.set(song.key, song);
+      items.push(song);
+      fresh.push(song);
+    });
+
+    if (snap.size) lastDoc = snap.docs[snap.size - 1];
+    hasMore = snap.size === PAGE_SIZE;
+
+    setStatus('online');
+
+    if (reset) grid.innerHTML = '';
+
+    // Só insere cards novos que passam pelo filtro atual
+    const t = norm(term);
+    const toAppend = t
+      ? fresh.filter((s) => norm(s.titulo).includes(t) || norm(s.canal).includes(t))
+      : fresh;
+
+    appendCards(toAppend);
+    updateChrome();
+
+  } catch (error) {
+    console.error('Erro ao ler ' + CATALOGO + ':', error);
+    setStatus('offline');
+    if (reset) grid.innerHTML = '';
+    emptyTitle.textContent = 'Não foi possível carregar o catálogo';
+    emptySub.innerHTML = 'Verifique as regras de leitura de <code>' + CATALOGO +
+      '</code> e se o campo de ordenação existe nos documentos.';
+    emptyEl.hidden = false;
+    countPill.textContent = '0 músicas';
+  } finally {
+    loading = false;
+    btnMore.disabled = false;
+    btnMore.textContent = 'Carregar mais';
+  }
+}
+
+// Expande páginas enquanto a busca tiver poucos resultados
+async function maybeAutoSearch() {
+  if (!norm(term)) return;
+  if (!hasMore) return;
+  if (pagesLoaded >= MAX_AUTO_PAGES) return;
+  if (filtered().length >= 6) return;
+  await loadPage(false);
+  maybeAutoSearch();
+}
+
+// Varre o catálogo até o teto definido
+async function searchWholeCatalog() {
+  const startPage = pagesLoaded;
+  btnSearchAll.disabled = true;
+  btnSearchAll.textContent = 'Buscando…';
+
+  while (hasMore && (pagesLoaded - startPage) < MAX_SEARCH_PAGES) {
+    await loadPage(false);
+  }
+
+  paint();
+  btnSearchAll.disabled = false;
+  btnSearchAll.textContent = 'Buscar em todo o catálogo';
+
+  if (!filtered().length) {
+    emptyTitle.textContent = 'Nenhuma música encontrada';
+    emptySub.textContent = 'O termo não existe nas ' + items.length +
+      ' músicas verificadas' + (hasMore ? ' (o catálogo tem mais registros).' : '.');
+  }
+}
+
+// ============================================================
+// PLAYER
+// ============================================================
+function openPlayer(s) {
+  if (!s) return;
+
+  playerTitle.textContent = s.titulo;
+  playerArtist.textContent = s.canal;
+
+  const meta = [];
+  if (s.views) meta.push(fmtNum(s.views) + ' visualizações');
+  if (s.likes) meta.push(fmtNum(s.likes) + ' curtidas');
+  if (s.duracao) meta.push(s.duracao);
+  playerMeta.textContent = meta.join(' · ');
+
+  if (s.videoId) {
+    playerLink.href = 'https://www.youtube.com/watch?v=' + s.videoId;
+    playerLink.hidden = false;
+    playerFrame.src = 'https://www.youtube.com/embed/' + s.videoId +
+                      '?autoplay=1&rel=0&modestbranding=1';
+  } else {
+    playerLink.hidden = true;
+    playerFrame.src = '';
+  }
+
+  playerOverlay.classList.add('active');
+}
+
+function closePlayer() {
+  playerOverlay.classList.remove('active');
+  playerFrame.src = '';
+}
+
+// ============================================================
+// EVENTOS
+// ============================================================
+let searchTimer = null;
+
+searchInput.addEventListener('input', (e) => {
+  term = e.target.value;
+  clearBtn.hidden = !term;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    paint();
+    if (norm(term)) maybeAutoSearch();
+    updateChrome();
+  }, 180);
+});
+
+clearBtn.addEventListener('click', () => {
+  term = '';
+  searchInput.value = '';
+  clearBtn.hidden = true;
+  paint();
+  searchInput.focus();
+});
+
+sortChips.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  if (chip.dataset.sort === sortMode) return;
+
+  sortChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
+  chip.classList.add('active');
+  sortMode = chip.dataset.sort || 'views';
+  loadPage(true);   // troca de ordenação reinicia o cursor
+});
+
+btnMore.addEventListener('click', async () => {
+  await loadPage(false);
+  updateChrome();
+});
+
+btnSearchAll.addEventListener('click', searchWholeCatalog);
+
+btnRefresh.addEventListener('click', async () => {
+  btnRefresh.classList.add('spinning');
+  await loadPage(true);
+  btnRefresh.classList.remove('spinning');
+});
+
+// Rolagem infinita — dispara a página seguinte ao chegar no sentinela
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some((en) => en.isIntersecting)) {
+      if (!loading && hasMore && !emptyEl.offsetParent) loadPage(false);
+    }
+  }, { rootMargin: '300px' });
+  io.observe(sentinel);
+}
+
+function activateCard(el) {
+  const card = el.closest('.card');
+  if (!card) return;
+  const song = byKey.get(card.dataset.key);
+  if (song) openPlayer(song);
+}
+
+grid.addEventListener('click', activateCard);
+grid.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateCard(e.target); }
+});
+
+playerClose.addEventListener('click', closePlayer);
+playerOverlay.addEventListener('click', (e) => { if (e.target === playerOverlay) closePlayer(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && playerOverlay.classList.contains('active')) closePlayer();
+});
+
+// ===== INICIA =====
+loadPage(true);
+</script>
+</body>
+</html>
