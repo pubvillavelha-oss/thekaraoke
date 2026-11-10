@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VillaKê — Popular Catálogo</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #1a1816;
+    --card: #272320;
+    --card-2: #2E2925;
+    --line-soft: rgba(255, 255, 255, 0.05);
+    --copper: #d48c48;
+    --txt: #fdfdfd;
+    --txt-2: #B9B2AA;
+    --txt-3: #8A8279;
+    --green: #4ade80;
+    --red: #f43f5e;
+    --amber: #f2b544;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(110% 46% at 50% -8%, rgba(212,140,72,0.10) 0%, rgba(26,24,22,0) 58%),
+      var(--bg);
+    min-height: 100vh;
+    color: var(--txt);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 940px; width: 100%; }
+
+  /* ===== HEADER ===== */
+  .header { text-align: center; margin-bottom: 22px; }
+  .header .brand-logo { display: block; margin: 0 auto; width: auto; max-width: 158px; height: auto; }
+  .brand-fallback {
+    display: none; font-size: 24px; font-weight: 800;
+    letter-spacing: .06em; color: var(--copper); line-height: 1.1;
+  }
+  .brand-fallback small {
+    display: block; font-size: 9px; font-weight: 600;
+    letter-spacing: .42em; color: #F5E9DD; margin-top: 6px;
+  }
+  .header .sub {
+    margin-top: 12px; font-size: 10.5px; letter-spacing: .3em;
+    text-transform: uppercase; color: var(--txt-3); font-weight: 600;
+  }
+
+  /* ===== AVISO ===== */
+  .warn {
+    display: flex; gap: 11px; align-items: flex-start;
+    background: rgba(242,181,68,0.07);
+    border: 1px solid rgba(242,181,68,0.22);
+    border-radius: 14px; padding: 13px 15px; margin-bottom: 16px;
+    font-size: 12.5px; line-height: 1.55; color: #E5C58C;
+  }
+  .warn strong { color: var(--amber); }
+  .warn .w-icon { flex-shrink: 0; font-size: 14px; line-height: 1.35; }
+
+  /* ===== PAINÉIS ===== */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 18px 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 14px 30px rgba(0,0,0,.34);
+  }
+  .panel-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .panel-num {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(212,140,72,.16);
+    border: 1px solid rgba(212,140,72,.36);
+    color: var(--copper); font-size: 12px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .panel-title {
+    font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase;
+    font-weight: 700; color: var(--copper);
+  }
+  .panel-desc {
+    font-size: 12.5px; color: var(--txt-3); line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .panel-desc code {
+    color: var(--txt-2); background: rgba(255,255,255,.05);
+    padding: 1px 6px; border-radius: 5px; font-size: 11.5px;
+  }
+
+  /* ===== ESTATÍSTICAS ===== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--card-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px; padding: 12px 13px;
+  }
+  .stat .s-label {
+    font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--txt-3); font-weight: 700;
+  }
+  .stat .s-value {
+    font-size: 22px; font-weight: 800; color: var(--txt);
+    margin-top: 5px; font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .stat.accent .s-value { color: var(--copper); }
+  .stat.good .s-value { color: var(--green); }
+  .stat.dim .s-value { color: var(--txt-3); }
+
+  /* ===== BOTÕES ===== */
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--copper); color: #1a1512;
+    border: none; padding: 12px 20px; border-radius: 12px;
+    font-family: inherit; font-size: 13.5px; font-weight: 800;
+    cursor: pointer; letter-spacing: .01em;
+    box-shadow: 0 8px 18px rgba(212,140,72,.18);
+    transition: filter .18s ease, transform .18s ease, opacity .18s ease;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  .btn-ghost {
+    background: transparent; color: var(--txt-2);
+    border: 1px solid var(--line-soft); box-shadow: none;
+    font-weight: 700;
+  }
+  .btn-ghost:hover:not(:disabled) { color: var(--copper); border-color: rgba(212,140,72,.4); }
+
+  .btn-danger {
+    background: transparent; color: #E8879A;
+    border: 1px solid rgba(244,63,94,.3); box-shadow: none;
+    font-weight: 700;
+  }
+  .btn-danger:hover:not(:disabled) { background: rgba(244,63,94,.12); border-color: rgba(244,63,94,.5); }
+
+  .chk {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--txt-2); cursor: pointer;
+    user-select: none;
+  }
+  .chk input { width: 16px; height: 16px; accent-color: var(--copper); cursor: pointer; }
+
+  /* ===== PROGRESSO ===== */
+  .progress-box { margin-top: 4px; }
+  .progress-bar {
+    height: 6px; border-radius: 999px; background: rgba(255,255,255,.06);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #c17d42, var(--copper));
+    border-radius: 999px;
+    transition: width .25s ease;
+  }
+  .progress-txt {
+    display: flex; justify-content: space-between; gap: 10px;
+    margin-top: 8px; font-size: 11.5px; color: var(--txt-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ===== LOG ===== */
+  .log {
+    background: #141210;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    padding: 12px 14px;
+    max-height: 240px; overflow-y: auto;
+    font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+    font-size: 11.5px; line-height: 1.75;
+    color: var(--txt-2);
+    margin-top: 14px;
+  }
+  .log::-webkit-scrollbar { width: 8px; }
+  .log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+  .log .l-time { color: #6E655C; }
+  .log .l-ok { color: var(--green); }
+  .log .l-warn { color: var(--amber); }
+  .log .l-err { color: #F0808F; }
+  .log .l-info { color: var(--txt-2); }
+  .log .l-muted { color: var(--txt-3); }
+
+  /* ===== PREVIEW ===== */
+  .preview-wrap { margin-top: 16px; }
+  .preview-label {
+    font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--txt-3); font-weight: 700; margin-bottom: 9px;
+  }
+  .preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+  }
+  .pv {
+    position: relative; border-radius: 9px; overflow: hidden;
+    background: #12100E; border: 1px solid var(--line-soft);
+    aspect-ratio: 16 / 9;
+  }
+  .pv img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pv .pv-ph {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #554D45;
+  }
+  .pv .pv-t {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.85));
+    font-size: 8.5px; line-height: 1.25; color: #E8E2DB;
+    padding: 10px 5px 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ===== RODAPÉ ===== */
+  .footer {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 20px; font-size: 11.5px; letter-spacing: .04em; color: var(--txt-3);
+  }
+  .footer .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .footer .dot.off { background: var(--red); }
+
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .btn { width: 100%; }
+    .actions { flex-direction: column; align-items: stretch; }
+    .chk { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <img src="LOGO_HR.png" alt="VillaKê Karaokê" class="brand-logo"
+         onerror="this.style.display='none';document.getElementById('brandFallback').style.display='block';" />
+    <div class="brand-fallback" id="brandFallback">
+      VILLAKÊ
+      <small>KARAOKÊ</small>
+    </div>
+    <div class="sub">Popular catálogo</div>
+  </header>
+
+  <div class="warn">
+    <span class="w-icon">⚙️</span>
+    <div>
+      <strong>Ferramenta administrativa.</strong> Ela lê <code>karaoke_cache_youtube</code>
+      e grava em <code>catalogo</code>. Use em um computador, de preferência logado,
+      e feche a aba ao terminar. Não deixe esta página publicada com escrita liberada.
+    </div>
+  </div>
+
+  <!-- 1. VARREDURA -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="panel-num">1</span>
+      <span class="panel-title">Varredura do cache</span>
+    </div>
+    <p class="panel-desc">
+      Lê todos os documentos de <code>karaoke_cache_youtube</code>, extrai cada vídeo
+      (raiz e chaves numéricas) e deduplica pelo <code>id</code> do YouTube.
+      Nada é gravado nesta etapa.
+    </p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="s-label">Documentos lidos</div>
+        <div class="s-value" id="stDocs">0</div>
+      </div>
+      <div class="stat">
+        <div class="s-label">Vídeos encontrados</div>
+        <div class="s-value" id="stFound">0</div>
+      </div>
+      <div class="stat accent">
+        <div class="s-label">Músicas únicas</div>
+        <div class="s-value" id="stUnique">0</div>
+      </div>
+      <div class="stat dim">
+        <div class="s-label">Duplicados descartados</div>
+        <div class="s-value" id="stDup">0</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnScan" type="button">Analisar cache</button>
+      <button class="btn btn-ghost" id="btnStop" type="button" hidden>Parar</button>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap" hidden>
+      <div class="preview-label">Amostra das músicas extraídas</div>
+      <div class="preview" id="preview"></div>
+    </div>
+  </section>
+
+  <!-- 2. GRAVAÇÃO -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="panel-num">2</span>
+      <span class="panel-title">Gravar no catálogo</span>
+    </div>
+    <p class="panel-desc">
+      Grava cada música em <code>catalogo</code> usando o <code>videoId</code> como ID do documento.
+      Rodar de novo não cria duplicata: documentos existentes são ignorados,
+      salvo se você marcar a opção abaixo.
+    </p>
+
+    <div class="stats">
+      <div class="stat good">
+        <div class="s-label">Novos</div>
+        <div class="s-value" id="stNew">0</div>
+      </div>
+      <div class="stat accent">
+        <div class="s-label">Atualizados</div>
+        <div class="s-value" id="stUpd">0</div>
+      </div>
+      <div class="stat dim">
+        <div class="s-label">Já existentes</div>
+        <div class="s-value" id="stSkip">0</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnWrite" type="button" disabled>Gravar catálogo</button>
+      <label class="chk">
+        <input type="checkbox" id="chkUpdate" />
+        Atualizar registros existentes
+      </label>
+    </div>
+  </section>
+
+  <!-- 3. MANUTENÇÃO -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="panel-num">3</span>
+      <span class="panel-title">Manutenção</span>
+    </div>
+    <p class="panel-desc">
+      Confere se algum documento de <code>catalogo</code> ficou fora do padrão
+      (ID diferente do <code>videoId</code> ou música repetida em dois documentos)
+      e remove as cópias, mantendo o registro com mais dados.
+    </p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="s-label">Docs no catálogo</div>
+        <div class="s-value" id="stCat">0</div>
+      </div>
+      <div class="stat dim">
+        <div class="s-label">Fora do padrão</div>
+        <div class="s-value" id="stBad">0</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="btnAudit" type="button">Verificar catálogo</button>
+      <button class="btn btn-danger" id="btnClean" type="button" disabled>Remover duplicados</button>
+    </div>
+  </section>
+
+  <!-- PROGRESSO -->
+  <section class="panel">
+    <div class="progress-box">
+      <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+      <div class="progress-txt">
+        <span id="progLabel">Pronto para iniciar</span>
+        <span id="progCount"></span>
+      </div>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <div class="footer">
+    <span class="dot" id="netDot"></span>
+    <span id="netText">Conectando…</span>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// FIREBASE
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBDl_Jgh00rA6kozOjCXjgQCwhPjVfc4_E",
+  authDomain: "karaokevvp.firebaseapp.com",
+  projectId: "karaokevvp",
+  storageBucket: "karaokevvp.firebasestorage.app",
+  messagingSenderId: "938258818805",
+  appId: "1:938258818805:web:bbdae00b3cf3811f1b07bc"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const FIELD_PATH = firebase.firestore.FieldPath.documentId();
+
+const CACHE    = 'karaoke_cache_youtube';
+const CATALOGO = 'catalogo';
+const READ_PAGE = 300;    // documentos por página de leitura
+const WRITE_CHUNK = 350;  // escritas por batch (limite do Firestore é 500)
+const PREVIEW_QTD = 12;
+
+// ===== DOM =====
+const $ = (id) => document.getElementById(id);
+const stDocs = $('stDocs'), stFound = $('stFound'), stUnique = $('stUnique'), stDup = $('stDup');
+const stNew = $('stNew'), stUpd = $('stUpd'), stSkip = $('stSkip');
+const stCat = $('stCat'), stBad = $('stBad');
+const btnScan = $('btnScan'), btnStop = $('btnStop'), btnWrite = $('btnWrite');
+const btnAudit = $('btnAudit'), btnClean = $('btnClean');
+const chkUpdate = $('chkUpdate');
+const progFill = $('progFill'), progLabel = $('progLabel'), progCount = $('progCount');
+const logEl = $('log'), previewWrap = $('previewWrap'), previewEl = $('preview');
+const netDot = $('netDot'), netText = $('netText');
+
+// ===== ESTADO =====
+let catalog = new Map();   // videoId -> música
+let badDocs = [];          // documentos fora do padrão encontrados na auditoria
+let stopFlag = false;
+let busy = false;
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+const str = (v) => (v === null || v === undefined) ? '' : String(v).trim();
+const num = (v) => Number(v) || 0;
+
+const esc = (v) => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+function log(msg, kind) {
+  const t = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+  const cls = kind ? 'l-' + kind : 'l-info';
+  const line = document.createElement('div');
+  line.innerHTML = '<span class="l-time">' + t + '</span> <span class="' + cls + '">' + esc(msg) + '</span>';
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+  while (logEl.children.length > 400) logEl.removeChild(logEl.firstChild);
+}
+
+function progress(pct, label, count) {
+  progFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  if (label !== undefined) progLabel.textContent = label;
+  if (count !== undefined) progCount.textContent = count;
+}
+
+function setNet(on) {
+  netDot.className = 'dot' + (on ? '' : ' off');
+  netText.textContent = on ? 'Conectado ao projeto karaokevvp' : 'Sem conexão';
+}
+db.collection(CATALOGO).limit(1).get()
+  .then(() => setNet(true))
+  .catch(() => setNet(false));
+
+function setBusy(state) {
+  busy = state;
+  btnStop.hidden = !state;
+  btnScan.disabled = state;
+  btnAudit.disabled = state;
+  if (state) btnWrite.disabled = true;
+  else btnWrite.disabled = catalog.size === 0;
+}
+
+function todayCount() {}
+
+// ============================================================
+// EXTRAÇÃO DO DOCUMENTO DE CACHE
+// ============================================================
+function vidFromUrl(input) {
+  const s = str(input);
+  if (!s) return '';
+  if (/^[\w-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:vi\/|v=|\/embed\/|youtu\.be\/|\/shorts\/)([\w-]{11})/);
+  return m ? m[1] : '';
+}
+
+// Títulos truncados com "..." são preteridos quando existe versão completa
+function betterTitle(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const aTrunc = /\.\.\.$/.test(a);
+  const bTrunc = /\.\.\.$/.test(b);
+  if (aTrunc && !bTrunc) return b;
+  if (bTrunc && !aTrunc) return a;
+  return a.length >= b.length ? a : b;
+}
+
+// Extrai todos os vídeos de um documento do cache
+function videosFromCacheDoc(data) {
+  const out = [];
+
+  function add(o) {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return;
+
+    const titulo = str(o.titulo || o.title || o.nome || o.musica);
+    const thumb  = str(o.thumb || o.thumbnail || o.capa || o.imagem || o.cover);
+    if (!titulo && !thumb) return;
+
+    let vid = str(o.id || o.videoId || o.youtubeId || o.video_id);
+    if (!vid) vid = vidFromUrl(thumb);
+    if (!vid) vid = vidFromUrl(o.link || o.url);
+    if (!vid) return;   // sem ID não há como deduplicar
+
+    out.push({
+      videoId: vid,
+      titulo,
+      canal: str(o.canal || o.artista || o.artist || o.autor || o.channelTitle),
+      thumb,
+      views: num(o.views || o.viewCount),
+      likes: num(o.likes || o.likeCount),
+      duracao: num(o.duration || o.duracao)
+    });
+  }
+
+  add(data);
+
+  Object.keys(data || {}).forEach((k) => {
+    if (!/^\d+$/.test(k)) return;
+    const v = data[k];
+    if (Array.isArray(v)) {
+      v.forEach((x) => Array.isArray(x) ? x.forEach(add) : add(x));
+    } else {
+      add(v);
+    }
+  });
+
+  return out;
+}
+
+// Funde duas ocorrências do mesmo vídeo mantendo o melhor de cada campo
+function mergeSong(prev, cur) {
+  return {
+    videoId: prev.videoId,
+    titulo: betterTitle(prev.titulo, cur.titulo),
+    canal: prev.canal || cur.canal,
+    thumb: prev.thumb || cur.thumb,
+    views: Math.max(prev.views, cur.views),
+    likes: Math.max(prev.likes, cur.likes),
+    duracao: prev.duracao || cur.duracao
+  };
+}
+
+// ============================================================
+// PAGINAÇÃO GENÉRICA
+// ============================================================
+async function iterate(collectionName, pageSize, onPage) {
+  let cursor = null;
+  let total = 0;
+
+  while (true) {
+    if (stopFlag) break;
+
+    let q = db.collection(collectionName).orderBy(FIELD_PATH).limit(pageSize);
+    if (cursor) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    if (!snap.size) break;
+
+    cursor = snap.docs[snap.size - 1];
+    total += snap.size;
+
+    await onPage(snap, total);
+
+    if (snap.size < pageSize) break;
+  }
+
+  return total;
+}
+
+// ============================================================
+// 1) VARREDURA
+// ============================================================
+async function scanCache() {
+  if (busy) return;
+  stopFlag = false;
+  setBusy(true);
+
+  catalog = new Map();
+  stDocs.textContent = '0';
+  stFound.textContent = '0';
+  stUnique.textContent = '0';
+  stDup.textContent = '0';
+  previewWrap.hidden = true;
+  previewEl.innerHTML = '';
+  progress(0, 'Lendo documentos do cache…', '');
+
+  log('Iniciando varredura de ' + CACHE + ' (sem gravar nada).');
+
+  let found = 0;
+
+  try {
+    const total = await iterate(CACHE, READ_PAGE, (snap, lidos) => {
+      snap.forEach((doc) => {
+        const videos = videosFromCacheDoc(doc.data() || {});
+        found += videos.length;
+
+        videos.forEach((s) => {
+          const prev = catalog.get(s.videoId);
+          catalog.set(s.videoId, prev ? mergeSong(prev, s) : s);
+        });
+      });
+
+      stDocs.textContent = lidos;
+      stFound.textContent = found;
+      stUnique.textContent = catalog.size;
+      stDup.textContent = Math.max(0, found - catalog.size);
+
+      // a varredura não conhece o total; usa a página atual como referência
+      progress(Math.min(95, lidos / 10), 'Lendo documentos do cache…',
+        lidos + ' docs · ' + catalog.size + ' únicas');
+    });
+
+    if (stopFlag) log('Varredura interrompida pelo usuário.', 'warn');
+
+    progress(100, 'Varredura concluída',
+      total + ' docs · ' + catalog.size + ' músicas únicas');
+
+    log('Documentos lidos: ' + total, 'muted');
+    log('Vídeos encontrados: ' + found, 'muted');
+    log('Músicas únicas: ' + catalog.size, 'ok');
+    log('Duplicados descartados: ' + Math.max(0, found - catalog.size), 'muted');
+
+    if (!catalog.size) {
+      log('Nenhum vídeo com id válido foi encontrado. Confira o schema do cache.', 'err');
+    } else {
+      renderPreview();
+    }
+
+  } catch (e) {
+    console.error(e);
+    log('Erro na varredura: ' + (e.message || e), 'err');
+    log('Verifique as regras de leitura de ' + CACHE + '.', 'warn');
+    progress(0, 'Falhou', '');
+  } finally {
+    setBusy(false);
+  }
+}
+
+function renderPreview() {
+  const items = Array.from(catalog.values()).slice(0, PREVIEW_QTD);
+
+  previewEl.innerHTML = items.map((s) => {
+    const raw = s.thumb || ('https://i.ytimg.com/vi/' + s.videoId + '/hqdefault.jpg');
+    const big = raw.replace(/\/(default|mqdefault|sddefault|hqdefault|maxresdefault)\.(jpg|jpeg|webp|png)/i,
+      '/maxresdefault.jpg');
+    const fb = 'https://i.ytimg.com/vi/' + s.videoId + '/hqdefault.jpg';
+
+    return '<div class="pv" title="' + esc(s.titulo) + '">' +
+      '<img src="' + esc(big) + '" alt="" loading="lazy" data-fb="' + esc(fb) + '" onerror="pvFallback(this)">' +
+      '<span class="pv-t">' + esc(s.titulo || 'Sem título') + '</span>' +
+      '</div>';
+  }).join('');
+
+  previewWrap.hidden = false;
+}
+
+window.pvFallback = function (img) {
+  const fb = img.getAttribute('data-fb');
+  if (fb && img.getAttribute('src') !== fb) { img.setAttribute('src', fb); return; }
+  img.removeAttribute('onerror');
+  const ph = document.createElement('div');
+  ph.className = 'pv-ph';
+  ph.textContent = '♪';
+  img.replaceWith(ph);
+};
+
+// ============================================================
+// 2) GRAVAÇÃO
+// ============================================================
+function buildPayload(s, old) {
+  const o = old || {};
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const payload = {
+    videoId: s.videoId,
+    titulo: o.titulo || s.titulo || 'Sem título',
+    canal: o.canal || s.canal || '',
+    thumb: o.thumb || s.thumb || ('https://i.ytimg.com/vi/' + s.videoId + '/hqdefault.jpg'),
+    thumbHd: 'https://i.ytimg.com/vi/' + s.videoId + '/maxresdefault.jpg',
+    views: Math.max(num(o.views), s.views),
+    likes: Math.max(num(o.likes), s.likes),
+    duracao: num(o.duracao) || s.duracao || 0,
+    atualizadoEm: now
+  };
+  if (!o.criadoEm) payload.criadoEm = now;
+  return payload;
+}
+
+async function writeCatalog() {
+  if (busy) return;
+  if (!catalog.size) { log('Nada para gravar. Rode a varredura primeiro.', 'warn'); return; }
+
+  stopFlag = false;
+  setBusy(true);
+
+  const entries = Array.from(catalog.values());
+  const updateExisting = chkUpdate.checked;
+
+  let created = 0, updated = 0, skipped = 0;
+  stNew.textContent = '0';
+  stUpd.textContent = '0';
+  stSkip.textContent = '0';
+  progress(0, 'Gravando no catálogo…', '0 / ' + entries.length);
+
+  log('Gravando ' + entries.length + ' músicas em ' + CATALOGO +
+      (updateExisting ? ' (atualizando existentes).' : ' (somente novos).'));
+
+  try {
+    for (let i = 0; i < entries.length; i += WRITE_CHUNK) {
+      if (stopFlag) break;
+
+      const slice = entries.slice(i, i + WRITE_CHUNK);
+      const refs = slice.map((s) => db.collection(CATALOGO).doc(s.videoId));
+
+      // lê o que já existe para não regredir views/likes
+      const existing = await db.getAll(...refs);
+
+      const batch = db.batch();
+      existing.forEach((snap, idx) => {
+        const s = slice[idx];
+        const ref = refs[idx];
+
+        if (snap.exists) {
+          if (!updateExisting) { skipped++; return; }
+          batch.set(ref, buildPayload(s, snap.data() || {}));
+          updated++;
+        } else {
+          batch.set(ref, buildPayload(s, null));
+          created++;
+        }
+      });
+
+      await batch.commit();
+
+      stNew.textContent = created;
+      stUpd.textContent = updated;
+      stSkip.textContent = skipped;
+
+      const done = Math.min(i + WRITE_CHUNK, entries.length);
+      progress(done / entries.length * 100, 'Gravando no catálogo…',
+        done + ' / ' + entries.length);
+    }
+
+    if (stopFlag) log('Gravação interrompida. O que já foi enviado está salvo.', 'warn');
+
+    progress(100, 'Gravação concluída', created + updated + ' gravadas');
+    log('Novos: ' + created, 'ok');
+    if (updated) log('Atualizados: ' + updated, 'ok');
+    if (skipped) log('Já existentes (ignorados): ' + skipped, 'muted');
+
+  } catch (e) {
+    console.error(e);
+    log('Erro ao gravar: ' + (e.message || e), 'err');
+    log('Verifique as regras de escrita de ' + CATALOGO + '.', 'warn');
+  } finally {
+    setBusy(false);
+  }
+}
+
+// ============================================================
+// 3) AUDITORIA E LIMPEZA
+// ============================================================
+async function auditCatalog() {
+  if (busy) return;
+  stopFlag = false;
+  setBusy(true);
+
+  badDocs = [];
+  progress(0, 'Verificando catálogo…', '');
+  log('Auditando ' + CATALOGO + '…');
+
+  try {
+    const groups = new Map();   // videoId -> [{ docId, views, likes }]
+
+    const total = await iterate(CATALOGO, READ_PAGE, (snap, lidos) => {
+      snap.forEach((doc) => {
+        const data = doc.data() || {};
+        const vid = str(data.videoId) || doc.id;
+        if (!groups.has(vid)) groups.set(vid, []);
+        groups.get(vid).push({
+          docId: doc.id,
+          videoId: str(data.videoId),
+          views: num(data.views),
+          likes: num(data.likes),
+          titulo: str(data.titulo)
+        });
+      });
+      progress(Math.min(95, lidos / 10), 'Verificando catálogo…', lidos + ' docs');
+    });
+
+    // escolhe o documento canônico de cada música
+    groups.forEach((list, vid) => {
+      let keep = list.find((d) => d.docId === vid);
+
+      if (!keep) {
+        // sem ID canônico: mantém o de mais views
+        keep = list.slice().sort((a, b) => (b.views + b.likes) - (a.views + a.likes))[0];
+      }
+
+      let flagged = false;
+      list.forEach((d) => {
+        if (!keep || d.docId !== keep.docId) { badDocs.push(d); flagged = true; }
+        else if (d.docId !== vid) { badDocs.push({ ...d, reason: 'id-fora-do-padrao' }); flagged = true; }
+      });
+
+      if (flagged && keep && keep.docId === vid) {
+        // mantém o canônico, remove os demais
+      }
+    });
+
+    stCat.textContent = total;
+    stBad.textContent = badDocs.length;
+
+    if (badDocs.length) {
+      log(badDocs.length + ' documento(s) fora do padrão encontrados.', 'warn');
+      badDocs.slice(0, 8).forEach((d) => {
+        log('· ' + d.docId + ' → ' + (d.titulo || 'sem título'), 'muted');
+      });
+      if (badDocs.length > 8) log('· … e mais ' + (badDocs.length - 8), 'muted');
+    } else {
+      log('Catálogo íntegro: nenhum duplicado ou registro fora do padrão.', 'ok');
+    }
+
+    btnClean.disabled = badDocs.length === 0;
+    progress(100, 'Verificação concluída', total + ' docs');
+
+  } catch (e) {
+    console.error(e);
+    log('Erro na auditoria: ' + (e.message || e), 'err');
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function cleanDuplicates() {
+  if (busy || !badDocs.length) return;
+
+  stopFlag = false;
+  setBusy(true);
+  progress(0, 'Removendo duplicados…', '0 / ' + badDocs.length);
+  log('Removendo ' + badDocs.length + ' documento(s) duplicado(s)…');
+
+  let removed = 0;
+
+  try {
+    for (let i = 0; i < badDocs.length; i += WRITE_CHUNK) {
+      if (stopFlag) break;
+
+      const slice = badDocs.slice(i, i + WRITE_CHUNK);
+      const batch = db.batch();
+
+      slice.forEach((d) => {
+        batch.delete(db.collection(CATALOGO).doc(d.docId));
+      });
+
+      await batch.commit();
+      removed += slice.length;
+
+      const done = Math.min(i + WRITE_CHUNK, badDocs.length);
+      progress(done / badDocs.length * 100, 'Removendo duplicados…',
+        done + ' / ' + badDocs.length);
+    }
+
+    log(removed + ' documento(s) removido(s).', 'ok');
+    stBad.textContent = Math.max(0, badDocs.length - removed);
+    badDocs = [];
+    btnClean.disabled = true;
+    progress(100, 'Limpeza concluída', removed + ' removidos');
+
+  } catch (e) {
+    console.error(e);
+    log('Erro ao remover: ' + (e.message || e), 'err');
+  } finally {
+    setBusy(false);
+  }
+}
+
+// ============================================================
+// EVENTOS
+// ============================================================
+btnScan.addEventListener('click', scanCache);
+btnWrite.addEventListener('click', writeCatalog);
+btnAudit.addEventListener('click', auditCatalog);
+btnClean.addEventListener('click', cleanDuplicates);
+btnStop.addEventListener('click', () => {
+  stopFlag = true;
+  log('Interrompendo após o lote atual…', 'warn');
+});
+
+chkUpdate.addEventListener('change', () => {
+  if (chkUpdate.checked) {
+    log('Modo atualização ativo: registros existentes serão sobrescritos com os dados do cache.', 'warn');
+  }
+});
+
+// ===== INICIA =====
+log('Página pronta. Comece pela etapa 1 — Analisar cache.', 'muted');
+progress(0, 'Pronto para iniciar', '');
+</script>
+</body>
+</html>
